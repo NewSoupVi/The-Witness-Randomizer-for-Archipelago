@@ -599,6 +599,7 @@ bool Generate::place_all_symbols(PuzzleSymbols & symbols)
 			}
 		}
 	}
+
 	if (numShapes > 0 && !place_shapes(colors, negativeColors, numShapes, numRotate, numNegative) || numShapes == 0 && numNegative > 0)
 		return false;
 
@@ -608,7 +609,7 @@ bool Generate::place_all_symbols(PuzzleSymbols & symbols)
 		return false;
 	for (std::pair<int, int> s : symbols[Decoration::Triangle]) if (!place_triangles(s.first & 0xf, s.second, s.first >> 16))
 		return false;
-	for (std::pair<int, int> s : symbols[Decoration::Arrow]) if (!place_arrows(s.first & 0xf, s.second, s.first >> 12))
+	for (std::pair<int, int> s : symbols[Decoration::Arrow]) if (!place_arrows(s.first & 0xf, s.second, s.first & Decoration::Arrow_Diagonal, s.first & Decoration::Arrow_Straight, s.first >> 14))
 		return false;
 	for (std::pair<int, int> s : symbols[Decoration::Star]) if (!place_stars(s.first & 0xf, s.second))
 		return false;
@@ -1677,7 +1678,7 @@ int Generate::count_sides(Point pos)
 
 //Place the given amount of arrows with the given color. targetCount is how many ticks on the arrows, or 0 for random
 //The color won't actually be reflected, ArrowRecolor must be used instead
-bool Generate::place_arrows(int color, int amount, int targetCount)
+bool Generate::place_arrows(int color, int amount, bool diagonal, bool straight, int targetCount)
 {
 	std::set<Point> open = _openpos;
 	while (amount > 0) {
@@ -1689,7 +1690,13 @@ bool Generate::place_arrows(int color, int amount, int targetCount)
 			continue; //Because of a glitch where arrows in the center column won't draw right
 		int fails = 0;
 		while (fails++ < 20) { //Keep picking random directions until one works
-			int choice = (_parity == -1 ? Random::rand() % 8 : Random::rand() % 4);
+			int choice = 0;
+
+			if (_parity != -1) choice = Random::rand() % 4;
+			else if (diagonal && straight) choice = Random::rand() % 8;
+			else if (diagonal) choice = Random::rand() % 4 + 4;
+			else choice = Random::rand() % 4;
+
 			Point dir = _8DIRECTIONS2[choice];
 			if (Point::pillarWidth > 0 && dir.second == 0) continue; //Sideways arrows on a pillar would wrap forever
 			int count = count_crossings(pos, dir);

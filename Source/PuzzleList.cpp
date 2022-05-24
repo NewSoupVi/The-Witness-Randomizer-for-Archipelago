@@ -4,11 +4,13 @@
 
 #include "PuzzleList.h"
 #include "Watchdog.h"
+#include "Panels.h"
 
 void PuzzleList::GenerateAllN()
 {
 	generator->setLoadingData(336);
 	CopyTargets();
+	GenerateShadowsN();
 	GenerateTutorialN();
 	GenerateSymmetryN();
 	GenerateQuarryN();
@@ -26,7 +28,6 @@ void PuzzleList::GenerateAllN()
 	GenerateCavesN();
 	SetWindowText(_handle, L"Done!");
 	(new ArrowWatchdog(0x0056E))->start(); //Easy way to close the randomizer when the game is done
-	//GenerateShadowsN(); //Can't randomize
 	//GenerateMonasteryN(); //Can't randomize
 }
 
@@ -36,23 +37,151 @@ void PuzzleList::GenerateShadowsN() {
 
 	std::shared_ptr<Memory> _memory = std::make_shared<Memory>("witness64_d3d11.exe");
 
-	_memory->WritePanelData<int>(0x386FA, SEQUENCE_LEN , { 0 });
-	_memory->WritePanelData<int>(0x386FA, DOT_SEQUENCE_LEN, { 0 });
-	generator->generate(0x386FA, Decoration::Arrow1, 5);
+	//Tutorial 1-5, 1-Arrows
 
-	generator->generate(0x1C33F, Decoration::Arrow2, 5);
-	generator->generate(0x196E2, Decoration::Arrow3, 5);
-	generator->generate(0x1972A, Decoration::Arrow, 6);
-	generator->generate(0x19809, Decoration::Arrow1, 5);
-	generator->generate(0x19806, Decoration::Arrow1, 5);
-	generator->generate(0x196F8, Decoration::Arrow1, 5);
-	generator->generate(0x1972F, Decoration::Arrow1, 5);
+	generator->setGridSize(2,2);
+	generator->pathWidth = 0.7f;
+	generator->setSymbol(Decoration::Start, 0, 4);
+	generator->setSymbol(Decoration::Exit, 4, 0);
+	generator->generate(0x198B5, Decoration::Arrow1 | Decoration::Arrow_Straight, 1);
 
-	generator->generate(0x19797, Decoration::Arrow1, 5);
-	generator->generate(0x1979A, Decoration::Arrow1, 5);
-	generator->generate(0x197E0, Decoration::Arrow1, 5);
-	generator->generate(0x197E8, Decoration::Arrow1, 5);
-	generator->generate(0x197E5, Decoration::Arrow1, 5);
+	generator->setGridSize(2, 2);
+	generator->setSymbol(Decoration::Start, 0, 4);
+	generator->setSymbol(Decoration::Exit, 4, 0);
+	generator->generate(0x198BD, Decoration::Arrow1 | Decoration::Arrow_Straight, 2);
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x198BF, Decoration::Arrow1 | Decoration::Arrow_Straight, 4);
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x19771, Decoration::Arrow1 | Decoration::Arrow_Straight, 4);
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x0A8DC, Decoration::Arrow1 | Decoration::Arrow_Straight, 4);
+
+	//Tutorial 6-8, 2-Arrows
+
+	generator->setGridSize(2, 2);
+	generator->setSymbol(Decoration::Start, 0, 4);
+	generator->setSymbol(Decoration::Exit, 4, 0);
+	generator->generate(0x0AC74, Decoration::Arrow2 | Decoration::Arrow_Straight, 1);
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x0AC7A, Decoration::Arrow2 | Decoration::Arrow_Straight, 1, Decoration::Arrow1 | Decoration::Arrow_Straight, 3);
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x0A8E0, Decoration::Arrow2 | Decoration::Arrow_Straight, 2, Decoration::Arrow1 | Decoration::Arrow_Straight, 3);
+
+	generator->arrowColor = { 0, 1, 0.8f, 1 };
+
+	//Avoid 1-3, Diagonal
+
+	generator->setGridSize(2, 2);
+	generator->setSymbol(Decoration::Start, 0, 4);
+	generator->setSymbol(Decoration::Exit, 4, 0);
+	generator->generate(0x386FA, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 1);
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x1C33F, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 3);
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x196E2, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 3);
+
+	//Avoid 4-5, Diagonal 2-Arrows
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x1972A, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 3, Decoration::Arrow2 | Decoration::Arrow_Diagonal, 1);
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x19809, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 3, Decoration::Arrow2 | Decoration::Arrow_Diagonal, 2);
+
+	//Avoid 6-7, Straight and Diagonal
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x19806, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 3, Decoration::Arrow1 | Decoration::Arrow_Straight, 1);
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x196F8, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 3, Decoration::Arrow1 | Decoration::Arrow_Straight, 2);
+
+	//Avoid 8, Straight, Diagonal & 2-Arrows
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x1972F, Decoration::Arrow2 | Decoration::Arrow_Diagonal, 1, Decoration::Arrow2 | Decoration::Arrow_Straight, 1, Decoration::Arrow1 | Decoration::Arrow_Diagonal, 2, Decoration::Arrow1 | Decoration::Arrow_Straight, 2);
+
+	//Follow 1-2, Arrow + Dots
+
+	generator->setGridSize(3, 3);
+	generator->setSymbol(Decoration::Start, 0, 6);
+	generator->setSymbol(Decoration::Exit, 6, 0);
+	generator->generate(0x19797, Decoration::Arrow1 | Decoration::Arrow_Straight, 2, Decoration::Dot_Intersection, 2);
+
+	//Follow 2, Arrow1 + Dots & Gap
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x1979A, Decoration::Arrow1 | Decoration::Arrow_Straight, 3, Decoration::Dot_Intersection, 2, Decoration::Gap, 3);
+
+	// Follow 3, Arrow 2 + Dots
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x197E0, Decoration::Arrow2 | Decoration::Arrow_Straight, 1, Decoration::Arrow1 | Decoration::Arrow_Straight, 2, Decoration::Dot_Intersection, 4);
+
+	// Follow 4, Arrow 2 + Dots + Gaps
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x197E8, Decoration::Arrow2 | Decoration::Arrow_Straight, 1, Decoration::Arrow1 | Decoration::Arrow_Straight, 3, Decoration::Dot_Intersection, 3, Decoration::Gap, 3);
+
+	//Follow 5, Arrow3 + Dots + Gaps
+
+	generator->setGridSize(4, 4);
+	generator->setSymbol(Decoration::Start, 0, 8);
+	generator->setSymbol(Decoration::Exit, 8, 0);
+	generator->generate(0x197E5, Decoration::Arrow3 | Decoration::Arrow_Straight, 1, Decoration::Arrow2 | Decoration::Arrow_Straight, 1, Decoration::Arrow1 | Decoration::Arrow_Straight, 2, Decoration::Dot_Intersection, 4, Decoration::Gap, 2);
+
+
+	// Laser: Crazy! :D
+
+	generator->setGridSize(6, 6);
+	generator->setSymbol(Decoration::Start, 12, 0);
+	generator->setSymbol(Decoration::Exit, 0, 12);
+	generator->arrowColor = { 0, 1, 0.8f, 1 };
+	generator->generate(0x19650, Decoration::Arrow3, 1, Decoration::Arrow2 | Decoration::Arrow_Straight, 1, Decoration::Arrow2 | Decoration::Arrow_Diagonal, 1, Decoration::Arrow1, 4, Decoration::Dot_Intersection, 6, Decoration::Gap, 8);
+
+
+	for (auto const id : shadowsPanels) {
+		_memory->WritePanelData<int>(id, SEQUENCE_LEN, { 0 });
+		_memory->WritePanelData<INT64>(id, SEQUENCE, { 0 });
+		(new ArrowWatchdog(id))->start();
+	}
 }
 
 void PuzzleList::GenerateAllH()
