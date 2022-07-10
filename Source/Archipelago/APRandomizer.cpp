@@ -170,6 +170,15 @@ void APRandomizer::PostGeneration(HWND loadingHandle, HWND skipButton, HWND avai
 	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips);
 	async->SkipPreviouslySkippedPuzzles();
 
+	int numberOfDecorations = _memory->ReadPanelData<int>(0x03612, NUM_DECORATIONS);
+	std::vector<int> decorations = _memory->ReadArray<int>(0x03612, DECORATIONS, numberOfDecorations);
+
+	decorations[4] = 0x03330402;
+
+	_memory->WriteArray<int>(0x03612, DECORATIONS, decorations);
+	_memory->WritePanelData<int>(0x03612, NEEDS_REDRAW, { 1 });
+
+
 	if (UnlockSymbols)
 		setPuzzleLocks(loadingHandle);
 
