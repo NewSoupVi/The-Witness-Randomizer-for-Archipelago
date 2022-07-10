@@ -193,6 +193,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (!apRandomizer->Connect(hwnd, address, user, password))
 				break;
 
+			break;
+
 			int seed = apRandomizer->Seed;
 			bool hard = apRandomizer->Hard;
 

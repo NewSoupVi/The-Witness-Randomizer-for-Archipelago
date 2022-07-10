@@ -1,6 +1,62 @@
 #include "APRandomizer.h"
 
 bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::string& user, std::string& password) {
+	std::vector<int> problemIDs;
+
+	std::map<int, std::vector<int>> doorsToCollisions;
+	
+	for (int id : collisionVolumes) {
+		_memory->showMsg = false;
+
+
+
+		int mountId = _memory->ReadPanelData<int>(id, 0x80) - 1;
+
+		if (!allDoorsEver.count(mountId)) {
+			std::wstringstream s;
+			s << std::hex << mountId << "\n";
+			OutputDebugStringW(s.str().c_str());
+			continue;
+		}
+
+		if (doorsToCollisions.find(mountId) == doorsToCollisions.end()) {
+			std::vector<int> newVec;
+			doorsToCollisions[mountId] = newVec;
+		}
+
+		doorsToCollisions[mountId].push_back(id);
+	}
+
+	std::wstringstream s;
+	s << "{\n";
+
+	for (auto const& [key, val] : doorsToCollisions)
+	{
+		s << "{ 0x" << std::hex << key;
+		s << ", {";
+		for (int id : val) {
+			s << " 0x" << std::hex << id << ",";
+		}
+		s << "}}";
+
+		s << "\n";
+	}
+
+	s << "}";
+
+	OutputDebugStringW(s.str().c_str());
+
+
+
+
+
+
+
+
+
+
+	return false;
+
 	std::string uri = buildUri(server);
 
 	ap = new APClient("uuid", "The Witness", uri);
