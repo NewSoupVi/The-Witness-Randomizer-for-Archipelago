@@ -1,9 +1,32 @@
 #include "APRandomizer.h"
 
+std::vector<int> APRandomizer::getRecursiveMounts(std::map<int, std::vector<int>> objectsToMountIDs, int id) {
+	if (objectsToMountIDs.find(id) == objectsToMountIDs.end()) {
+		std::vector<int> s;
+		return s;
+	}
+
+	std::vector<int> mounts = objectsToMountIDs[id];
+
+	std::vector<int> results;
+
+	for (int mount : mounts) {
+		std::vector<int> recursiveMounts = getRecursiveMounts(objectsToMountIDs, mount);
+
+		results.insert(results.end(), recursiveMounts.begin(), recursiveMounts.end());
+	}
+
+	results.insert(results.end(), mounts.begin(), mounts.end());
+
+	return results;
+}
+
 bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::string& user, std::string& password) {
 	std::vector<int> problemIDs;
 
-	std::map<int, std::vector<int>> doorsToCollisions;
+	std::map<int, std::vector<int>> objectsToMountIDs;
+
+	std::map<int, std::vector<int>> doorsToMountIDs;
 	
 	for (int id : collisionVolumes) {
 		_memory->showMsg = false;
@@ -12,32 +35,39 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 
 		int mountId = _memory->ReadPanelData<int>(id, 0x80) - 1;
 
-		if (!allDoorsEver.count(mountId)) {
-			std::wstringstream s;
-			s << std::hex << mountId << "\n";
-			OutputDebugStringW(s.str().c_str());
+		if (mountId == -1) {
 			continue;
 		}
 
-		if (doorsToCollisions.find(mountId) == doorsToCollisions.end()) {
+		if (objectsToMountIDs.find(mountId) == objectsToMountIDs.end()) {
 			std::vector<int> newVec;
-			doorsToCollisions[mountId] = newVec;
+			objectsToMountIDs[mountId] = newVec;
 		}
 
-		doorsToCollisions[mountId].push_back(id);
+		objectsToMountIDs[mountId].push_back(id);
 	}
+
+	for (int door : allDoorsEver) {
+		std::vector<int> mounts = getRecursiveMounts(objectsToMountIDs, door);
+
+		doorsToMountIDs[door] = mounts;
+	}
+
+
+
+
 
 	std::wstringstream s;
 	s << "{\n";
 
-	for (auto const& [key, val] : doorsToCollisions)
+	for (auto const& [key, val] : doorsToMountIDs)
 	{
 		s << "{ 0x" << std::hex << key;
 		s << ", {";
 		for (int id : val) {
 			s << " 0x" << std::hex << id << ",";
 		}
-		s << "}}";
+		s << "}},";
 
 		s << "\n";
 	}
