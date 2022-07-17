@@ -110,6 +110,18 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 			}
 		}
 
+		if (slotData.contains("log_ids_to_hints")) {
+			for (auto& [key, val] : slotData["log_ids_to_hints"].items()) {
+				std::vector<std::string> s;
+				int logId = std::stoul(key, nullptr, 10);
+				logsToHints[logId] = s;
+
+				for (auto str : val) {
+					logsToHints[logId].emplace_back(str);
+				}
+			}
+		}
+
 		mostRecentItemId = _memory->ReadPanelData<int>(0x00293, BACKGROUND_REGION_COLOR + 12);
 
 		connected = true;
@@ -266,7 +278,7 @@ void APRandomizer::setPuzzleLocks(HWND loadingHandle) {
 }
 
 void APRandomizer::GenerateNormal(HWND skipButton, HWND availableSkips) {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips);
+	async = new APWatchdog(ap, panelIdToLocationId, logsToHints, FinalPanel, panelLocker, skipButton, availableSkips);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)
@@ -274,7 +286,7 @@ void APRandomizer::GenerateNormal(HWND skipButton, HWND availableSkips) {
 }
 
 void APRandomizer::GenerateHard(HWND skipButton, HWND availableSkips) {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips);
+	async = new APWatchdog(ap, panelIdToLocationId, logsToHints, FinalPanel, panelLocker, skipButton, availableSkips);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)

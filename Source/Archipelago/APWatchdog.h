@@ -9,7 +9,7 @@
 
 class APWatchdog : public Watchdog {
 public:
-	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, HWND skipButton1, HWND availableSkips1) : Watchdog(1) {
+	APWatchdog(APClient* client, std::map<int, int> mapping, std::map<int, std::vector<std::string>> logHints, int lastPanel, PanelLocker* p, HWND skipButton1, HWND availableSkips1) : Watchdog(1) {
 		generator = std::make_shared<Generate>();
 		ap = client;
 		panelIdToLocationId = mapping;
@@ -17,6 +17,7 @@ public:
 		skipButton = skipButton1;
 		availableSkips = availableSkips1;
 		panelLocker = p;
+		logsToHints = logHints;
 	}
 
 	int skippedPuzzles = 0;
@@ -69,6 +70,7 @@ private:
 	std::set<int> severedDoorsList;
 	std::map<int,int> collisionsToRefresh;
 	std::map<int, std::vector<float>> collisionPositions;
+	std::map<int, std::vector<std::string>> logsToHints;
 
 	void DisplayMessage();
 

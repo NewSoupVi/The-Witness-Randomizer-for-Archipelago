@@ -52,6 +52,7 @@ class APRandomizer {
 		std::map<int, std::set<int>> itemIdToDoorSet;
 		std::set<int> allDoors;
 		std::shared_ptr<Memory> _memory;
+		std::map<int, std::vector<std::string>> logsToHints;
 
 		APClient* ap;
 		APWatchdog* async;

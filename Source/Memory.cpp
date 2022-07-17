@@ -343,6 +343,8 @@ void Memory::DisplaySubtitles(std::string line1, std::string line2, std::string 
 	char buffer[1024];
 
 	if (!_subtitlesStuff) {
+		OutputDebugStringW(L"Hello");
+
 		_subtitlesStuff = VirtualAllocEx(_handle, NULL, sizeof(buffer), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 		std::string sectionName = "mitchell_ttc_11";

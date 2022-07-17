@@ -554,16 +554,27 @@ void APWatchdog::AudioLogPlaying() {
 
 	for (int id : audioLogs) {
 		if (ReadPanelData<int>(id, AUDIO_LOG_IS_PLAYING)) {
-			std::stringstream s;
-			s << "Audio Log 0x" << std::hex << id << " is playing.";
+			if (logsToHints.count(id)) {
+				std::vector<std::string> hint = logsToHints[id];
 
-			line2 = s.str();
+				if (hint[3] == "item") {
+					line1 = hint[0];
+					line2 = "can be found at";
+					line3 = hint[1] + " (" + hint[2] + ")";
+				}
+				else
+				{
+					line1 = hint[1];
+					line2 = "contains";
+					line3 = hint[0] + " (" + hint[2] + ")";
+				}
 
-			_memory->DisplaySubtitles(line1, line2, line3);
-
-			return;
+				_memory->DisplaySubtitles(line1, line2, line3);
+				
+				return;
+			}
 		}
 	}
 
-	_memory->DisplaySubtitles("", "No audio log is playing.", "");
+	_memory->DisplaySubtitles("", "", "");
 }
