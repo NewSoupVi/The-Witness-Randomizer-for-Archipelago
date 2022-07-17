@@ -345,6 +345,14 @@ void Memory::DisplaySubtitles(std::string line1, std::string line2, std::string 
 	if (!_subtitlesStuff) {
 		OutputDebugStringW(L"Hello");
 
+		__int64 addressOfSettings = this->ReadData<__int64>({ 0x62D4E0 }, 1)[0];
+		__int32 oneBuff[1];
+		oneBuff[0] = 1;
+
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(addressOfSettings + 0xC), oneBuff, 4, NULL);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(100)); //Let the game load subtitles, if they are not loaded first the game crashes.
+
 		_subtitlesStuff = VirtualAllocEx(_handle, NULL, sizeof(buffer), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 		std::string sectionName = "mitchell_ttc_11";
