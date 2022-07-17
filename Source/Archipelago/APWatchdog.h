@@ -72,6 +72,8 @@ private:
 
 	void DisplayMessage();
 
+	void AudioLogPlaying();
+
 	void DisableCollisions();
 
 	void RefreshDoorCollisions();

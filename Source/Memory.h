@@ -148,6 +148,8 @@ public:
 
 	void DisplayHudMessage(std::string s);
 
+	void DisplaySubtitles(std::string line1, std::string line2, std::string line3);
+
 	void ClearOffsets() { _computedAddresses = std::map<uintptr_t, uintptr_t>(); }
 
 	static int GLOBALS;
@@ -200,6 +202,7 @@ private:
 	std::map<std::pair<int, int>, int> _arraySizes;
 	uintptr_t _baseAddress = 0;
 	LPVOID _messageAddress = 0;
+	LPVOID _subtitlesStuff = 0;
 	HANDLE _handle = nullptr;
 
 	friend class Randomizer;
