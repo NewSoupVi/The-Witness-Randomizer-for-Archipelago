@@ -31,9 +31,14 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 	for (int id : collisionVolumes) {
 		_memory->showMsg = false;
 
+		int mountId = -1;
 
-
-		int mountId = _memory->ReadPanelData<int>(id, 0x80) - 1;
+		try{
+			mountId = _memory->ReadPanelData<int>(id, 0x80) - 1;
+		}
+		catch (std::exception e) {
+			continue;
+		}
 
 		if (mountId == -1) {
 			continue;
