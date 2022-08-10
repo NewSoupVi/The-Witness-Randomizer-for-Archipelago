@@ -177,6 +177,8 @@ public:
 	static HWND errorWindow;
 	bool retryOnFail = true;
 
+	static bool doors;
+
 
 private:
 	template<class T>

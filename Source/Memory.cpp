@@ -423,6 +423,7 @@ uint64_t Memory::activateLaserFunction = 0;
 uint64_t Memory::hudTimePointer = 0;
 uint64_t Memory::updateEntityPositionFunction = 0;
 uint64_t Memory::displayHudFunction = 0;
+bool Memory::doors = false;
 
 std::vector<int> Memory::ACTIVEPANELOFFSETS = {};
 bool Memory::showMsg = false;

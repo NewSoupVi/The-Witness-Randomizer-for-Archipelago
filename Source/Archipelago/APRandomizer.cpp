@@ -317,5 +317,9 @@ void APRandomizer::SkipPuzzle() {
 void APRandomizer::SeverDoors() {
 	for (int id : allDoors) {
 		async->SeverDoor(id);
+
+		if (id == 0x0C323) {
+			_memory->doors = true;
+		}
 	}
 }

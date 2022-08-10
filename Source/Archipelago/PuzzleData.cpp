@@ -111,6 +111,9 @@ void PuzzleData::Read(std::shared_ptr<Memory> _memory) {
 	else if (id == 0x03702) { // River Vault: The squares are drawn on and validated separately!
 		hasStones = true;
 	}
+	else if (id >= 0x17DB3 && id <= 0x17DDB && _memory->doors) {
+		hasStarsWithOtherSymbol = false;
+	}
 }
 
 void PuzzleData::Restore(std::shared_ptr<Memory> _memory) {
