@@ -294,6 +294,10 @@ void APRandomizer::GenerateNormal(HWND skipButton, HWND availableSkips) {
 
 	if (DisableNonRandomizedPuzzles)
 		panelLocker->DisableNonRandomizedPuzzles(allDoors);
+		Special::SkipPanel(0x0360E);
+		Special::setPower(0x0360E, 1.0f);
+		_memory->OpenDoor(0x194B2);
+		_memory->OpenDoor(0x19665);
 }
 
 void APRandomizer::GenerateHard(HWND skipButton, HWND availableSkips) {

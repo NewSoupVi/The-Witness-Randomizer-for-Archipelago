@@ -19,6 +19,7 @@ void PanelLocker::DisableNonRandomizedPuzzles(std::set<int> exemptDoorPanels)
 	Special::copyTarget(0x17F9B, 0x17CAB);
 	Special::copyTarget(0x17C42, 0x09DE0);
 	Special::copyTarget(0x00A5B, 0x17CA4);
+	Special::copyTarget(0x17C2E, 0x09DE0);
 
 	for (int id : {0x17CA4, 0x17CAB, 0x28B39, 0x00C92, 0x0A8DC}) {
 		if (!exemptDoorPanels.count(id)) {
@@ -27,7 +28,7 @@ void PanelLocker::DisableNonRandomizedPuzzles(std::set<int> exemptDoorPanels)
 	}
 
 	disablePuzzle(0x0A8DC); //Shadows
-	disablePuzzle(0x17C2E); //BNK3R door
+	//disablePuzzle(0x17C2E); //BNK3R door
 	disablePuzzle(0x00B10); //Monastary door left
 	disablePuzzle(0x00C92); //Monastary door right
 	disablePuzzle(0x002C4); //Waves one
