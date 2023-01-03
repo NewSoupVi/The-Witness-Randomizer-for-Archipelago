@@ -27,7 +27,25 @@ void APWatchdog::action() {
 
 	halfSecondCountdown -= frameDuration.count();
 	if (halfSecondCountdown <= 0) {
-		halfSecondCountdown += 0.5f;
+		if (generatePuzzleNext) {
+			energyLink->generateNewPuzzle(0x2899C);
+			WritePanelData<float>(0x2899C, MAX_BROADCAST_DISTANCE, { -1.0f });
+			WritePanelData<float>(0x2899C, POWER, { 1.0f, 1.0f });
+			generatePuzzleNext = false;
+		}
+
+		//IMPORTANT!!!
+		//WHENEVER THIS ID IS CHANGED, IT NEEDS TO BE CHANGED IN GENERATE.CPP 164, REPLACING 0x2899C
+		else if (ReadPanelData<int>(0x2899C, SOLVED)) {
+			WritePanelData<int>(0x2899C, SOLVED, { 0 });
+			WritePanelData<float>(0x2899C, MAX_BROADCAST_DISTANCE, { 0.0001f });
+			WritePanelData<int>(0x2899C, STYLE_FLAGS, { ReadPanelData<int>(0x2899C, STYLE_FLAGS) & ~0x2 });
+			WritePanelData<int>(0x2899C, POWER, { 0, 0 });
+			WritePanelData<int>(0x2899C, TRACED_EDGES, { 0 });
+			generatePuzzleNext = true;
+		}
+
+		halfSecondCountdown += .5f;
 
 		QueueItemMessages();
 

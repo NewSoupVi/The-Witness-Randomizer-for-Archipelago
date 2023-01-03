@@ -1962,6 +1962,9 @@ void Special::DrawSimplePanel(int id, std::string text, bool kickOut)
 	panel._memory->WriteArray<int>(id, DECORATIONS, decorations);
 	panel._memory->WriteArray<int>(id, DECORATION_FLAGS, decorationsFlags);
 
+	panel._memory->WritePanelData<int>(id, GRID_SIZE_X, { 1 });
+	panel._memory->WritePanelData<int>(id, GRID_SIZE_Y, { 1 });
+
 	panel._memory->WritePanelData<int>(id, NUM_COLORED_REGIONS, { 0 });
 	panel._memory->WriteArray<int>(id, COLORED_REGIONS, { });
 

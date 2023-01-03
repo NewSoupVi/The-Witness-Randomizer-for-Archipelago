@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <map>
+#include "APEnergyLink.h"
 
 
 class APWatchdog : public Watchdog {
@@ -28,6 +29,7 @@ public:
 		EPShuffle = ep;
 		obeliskHexToEPHexes = o;
 		epToName = epn;
+		energyLink = new APEnergyLink(state);
 
 		for (auto [key, value] : obeliskHexToEPHexes) {
 			obeliskHexToAmountOfEPs[key] = (int)value.size();
@@ -86,6 +88,8 @@ public:
 	bool processingItemMessages = false;
 	bool newItemsJustIn = false;
 
+	int generatePuzzleNext = false;
+
 	void QueueReceivedItem(std::vector<__int64> item);
 
 	HudManager* getHudManager() const { return hudManager.get(); }
@@ -93,6 +97,7 @@ public:
 	std::set<int> seenAudioMessages;
 
 private:
+	APEnergyLink* energyLink;
 	APClient* ap;
 	PanelLocker* panelLocker;
 	std::shared_ptr<Generate> generator;

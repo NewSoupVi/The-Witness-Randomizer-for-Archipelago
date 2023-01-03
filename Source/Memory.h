@@ -295,8 +295,8 @@ private:
 
 	void CallVoidFunction(int id, uint64_t functionAdress);
 
-	std::map<uintptr_t, uintptr_t> _computedAddresses;
-	std::map<std::pair<int, int>, int> _arraySizes;
+	static std::map<uintptr_t, uintptr_t> _computedAddresses;
+	static std::map<std::pair<int, int>, int> _arraySizes;
 	LPVOID _messageAddress = 0;
 	LPVOID _subtitlesStuff = 0;
 	HANDLE _handle = nullptr;

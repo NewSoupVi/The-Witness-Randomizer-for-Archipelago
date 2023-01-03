@@ -1274,6 +1274,9 @@ uint64_t Memory::addToPatternMapFunction = 0;
 uint64_t Memory::removeFromPatternMapFunction = 0;
 uint64_t Memory::patternMap = 0;
 
+std::map<uintptr_t, uintptr_t> Memory::_computedAddresses = std::map<uintptr_t, uintptr_t>();
+std::map<std::pair<int, int>, int> Memory::_arraySizes = std::map<std::pair<int, int>, int>();
+
 std::vector<int> Memory::ACTIVEPANELOFFSETS = {};
 bool Memory::showMsg = false;
 HWND Memory::errorWindow = NULL;
