@@ -88,7 +88,7 @@ public:
 	bool processingItemMessages = false;
 	bool newItemsJustIn = false;
 
-	int generatePuzzleNext = false;
+	int generatePuzzleNext = -1;
 
 	void QueueReceivedItem(std::vector<__int64> item);
 
