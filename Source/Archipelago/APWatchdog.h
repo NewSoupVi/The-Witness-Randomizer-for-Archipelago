@@ -82,13 +82,12 @@ public:
 
 	void HandleLaserResponse(std::string laserID, nlohmann::json value, bool collect);
 	void HandleEPResponse(std::string epID, nlohmann::json value, bool collect);
+	void HandleEnergyLinkResponse(int value, int original_value, int player);
 
 	void InfiniteChallenge(bool enable);
 
 	bool processingItemMessages = false;
 	bool newItemsJustIn = false;
-
-	int generatePuzzleNext = -1;
 
 	void QueueReceivedItem(std::vector<__int64> item);
 
@@ -154,6 +153,8 @@ private:
 
 	void LookingAtObelisk();
 
+	void SendEnergy();
+
 	// Updates puzzle skip logic.
 	void UpdatePuzzleSkip(float deltaSeconds);
 
@@ -215,6 +216,9 @@ private:
 	bool metaPuzzleMessageHasBeenDisplayed = false;
 
 	std::vector<std::vector<__int64>> queuedItems;
+
+	int generatePuzzleNext = -1;
+	bool firstEnergyLinkGenerationDone = false;
 
 
 	int GetActivePanel() {

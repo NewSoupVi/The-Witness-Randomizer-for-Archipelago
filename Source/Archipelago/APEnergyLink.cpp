@@ -323,7 +323,7 @@ int APEnergyLink::chooseSymbolCombination() {
 	if (state->unlockedStones) possibleSymbols.emplace(BWSquare);
 	if (state->unlockedColoredStones) possibleSymbols.emplace(ColoredSquare);
 	if (state->unlockedStars) possibleSymbols.emplace(Stars);
-	if (state->unlockedStars) possibleSymbols.emplace(StarSameColor);
+	if (state->unlockedStarsWithOtherSimbol) possibleSymbols.emplace(StarSameColor);
 	if (state->unlockedTriangles) possibleSymbols.emplace(Triangles);
 	if (state->unlockedSymmetry) possibleSymbols.emplace(Symmetry);
 	if (state->unlockedTetris) possibleSymbols.emplace(Shapers);
@@ -347,4 +347,114 @@ int APEnergyLink::chooseSymbolCombination() {
 	}
 
 	return chosenCombination;
+}
+
+int APEnergyLink::getPowerOutput() {
+	int symbolCount = countSymbols();
+
+	return 10000000 * (symbolCount + 1);
+}
+
+int APEnergyLink::countSymbols() {
+	int unlockedSymbols = 0;
+
+	if (state->unlockedDots) unlockedSymbols++;
+	if (state->unlockedFullDots) unlockedSymbols++;
+	if (state->unlockedErasers) unlockedSymbols++;
+	if (state->unlockedStones) unlockedSymbols++;
+	if (state->unlockedColoredStones) unlockedSymbols++;
+	if (state->unlockedStars) unlockedSymbols++;
+	if (state->unlockedStarsWithOtherSimbol) unlockedSymbols++;
+	if (state->unlockedTriangles) unlockedSymbols++;
+	if (state->unlockedSymmetry) unlockedSymbols++;
+	if (state->unlockedTetris) unlockedSymbols++;
+	if (state->unlockedTetrisRotated) unlockedSymbols++;
+	if (state->unlockedTetrisNegative) unlockedSymbols++;
+	if (state->unlockedColoredDots) unlockedSymbols++;
+	if (state->unlockedSoundDots) unlockedSymbols++;
+	if (state->unlockedArrows) unlockedSymbols++;
+
+	return unlockedSymbols;
+}
+
+void GenerationData::parseInputString(std::string input) {
+	std::string delimiter = ", ";
+
+	size_t pos = 0;
+	std::string token;
+	while ((pos = input.find(delimiter)) != std::string::npos) {
+		token = input.substr(0, pos);
+
+		handleToken(token);
+
+		input.erase(0, pos + delimiter.length());
+	}
+}
+
+int GenerationData::getDecorationFlag(std::string token) {
+	if (decorationsMap.count(token)) return decorationsMap[token];
+	if (colorsMap.count(token)) return colorsMap[token];
+	throw std::invalid_argument("Unknown symbol/color: " + token);
+	return -1;
+}
+
+void GenerationData::handleToken(std::string token) {
+	if (token == "Normal Symmetry") {
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::ParallelH);
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::ParallelV);
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::Rotational);
+		return;
+	}
+	if (token == "Rotational Symmetry") {
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::Rotational);
+		return;
+	}
+	if (token == "Vertical Parallel Symmetry") {
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::ParallelV);
+		return;
+	}
+	if (token == "Horizontal Parallel Symmetry") {
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::ParallelH);
+		return;
+	}
+	if (token == "Parallel Symmetry") {
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::ParallelH);
+		this->allowedSymmetryTypes.push_back(Panel::Symmetry::ParallelV);
+		return;
+	}
+
+	std::string delimiter = ", ";
+
+	size_t pos = 0;
+	std::string subtoken;
+
+	int decoration = 0;
+	int amount = -1;
+
+	while ((pos = token.find(delimiter)) != std::string::npos) {
+		subtoken = token.substr(0, pos);
+		
+		if (is_number(subtoken)) {
+			amount = atoi(subtoken.c_str());
+			continue;
+		}
+
+		decoration |= getDecorationFlag(subtoken);
+	}
+
+	if (amount == -1) {
+		throw std::invalid_argument("Missing symbol amount: " + token);
+	}
+
+	if (decoration == 0) {
+		throw std::invalid_argument("Unknown / Incomplete token: " + token);
+	}
+
+	symbols.push_back({ decoration, amount });
+}
+
+bool is_number(const std::string& s)
+{
+	return !s.empty() && std::find_if(s.begin(),
+		s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }

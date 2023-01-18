@@ -6,6 +6,7 @@
 #include "SkipSpecialCases.h"
 
 #include <thread>
+#include "../Utilities.h"
 
 
 #define CHEAT_KEYS_ENABLED 0
@@ -29,30 +30,36 @@ void APWatchdog::action() {
 	if (halfSecondCountdown <= 0) {
 		generatePuzzleNext--;
 
-		if (ReadPanelData<int>(0x2899C, SOLVED)) {
-			WritePanelData<int>(0x2899C, SOLVED, { 0 });
+		if (ReadPanelData<int>(0x0042D, SOLVED)) {
+			WritePanelData<int>(0x0042D, SOLVED, { 0 });
 			generatePuzzleNext = 1;
-			if (ReadPanelData<int>(0x2899C, STYLE_FLAGS) & Panel::Style::HAS_ERASERS) {
+			if (ReadPanelData<int>(0x0042D, STYLE_FLAGS) & Panel::Style::HAS_ERASERS) {
 				generatePuzzleNext = 2;
 			}
+
+			if (firstEnergyLinkGenerationDone) {
+				SendEnergy();
+			}
+
+			firstEnergyLinkGenerationDone = true;
 		}
 
 		if (generatePuzzleNext == 1) {
-			WritePanelData<float>(0x2899C, MAX_BROADCAST_DISTANCE, { 0.0001f });
-			WritePanelData<int>(0x2899C, STYLE_FLAGS, { ReadPanelData<int>(0x2899C, STYLE_FLAGS) & ~0x2 });
-			WritePanelData<int>(0x2899C, POWER, { 0, 0 });
-			WritePanelData<int>(0x2899C, TRACED_EDGES, { 0 });
+			WritePanelData<float>(0x0042D, MAX_BROADCAST_DISTANCE, { 0.0001f });
+			WritePanelData<int>(0x0042D, STYLE_FLAGS, { ReadPanelData<int>(0x0042D, STYLE_FLAGS) & ~0x2 });
+			WritePanelData<int>(0x0042D, POWER, { 0, 0 });
+			WritePanelData<int>(0x0042D, TRACED_EDGES, { 0 });
 		}
 
 		if (generatePuzzleNext == 0) {
-			WritePanelData<int>(0x2899C, 0x31C, { 0 }); //erased decorations
-			energyLink->generateNewPuzzle(0x2899C);
-			WritePanelData<float>(0x2899C, MAX_BROADCAST_DISTANCE, { -1.0f });
-			WritePanelData<float>(0x2899C, POWER, { 1.0f, 1.0f });
+			WritePanelData<int>(0x0042D, 0x31C, { 0 }); //erased decorations
+			energyLink->generateNewPuzzle(0x0042D);
+			WritePanelData<float>(0x0042D, MAX_BROADCAST_DISTANCE, { -1.0f });
+			WritePanelData<float>(0x0042D, POWER, { 1.0f, 1.0f });
 		}
 
 		//IMPORTANT!!!
-		//WHENEVER THIS ID IS CHANGED, IT NEEDS TO BE CHANGED IN GENERATE.CPP 164, REPLACING 0x2899C
+		//WHENEVER THIS ID IS CHANGED, IT NEEDS TO BE CHANGED IN GENERATE.CPP 164, REPLACING 0x0042D
 
 
 		halfSecondCountdown += .5f;
@@ -160,14 +167,7 @@ void APWatchdog::CheckSolvedPanels() {
 				{
 					anyNew = true;
 
-					APClient::DataStorageOperation operation;
-					operation.operation = "replace";
-					operation.value = true;
-
-					std::list<APClient::DataStorageOperation> operations;
-					operations.push_back(operation);
-
-					ap->Set("WitnessEP" + std::to_string(ap->get_player_number()) + "-" + std::to_string(*it2), NULL, false, operations);
+					ap->Set("WitnessEP" + std::to_string(ap->get_player_number()) + "-" + std::to_string(*it2), NULL, false, { { "replace", true  } });
 
 					it2 = EPSet.erase(it2);
 				}
@@ -957,16 +957,9 @@ void APWatchdog::AudioLogPlaying() {
 			hudManager->clearSubtitleMessage();
 			hudManager->showSubtitleMessage(message, 12.0f);
 
-			APClient::DataStorageOperation operation;
-			operation.operation = "replace";
-			operation.value = true;
-
-			std::list<APClient::DataStorageOperation> operations;
-			operations.push_back(operation);
-
 			int pNO = ap->get_player_number();
 
-			ap->Set("WitnessAudioLog" + std::to_string(pNO) + "-" + std::to_string(logId), NULL, false, operations);
+			ap->Set("WitnessAudioLog" + std::to_string(pNO) + "-" + std::to_string(logId), NULL, false, { {"replace", true} });
 
 			int locationId = audioLogMessages[logId].second;
 
@@ -992,18 +985,7 @@ void APWatchdog::CheckEPs() {
 			EPStates[ep] = false;
 			EPIDs.push_back(epID);
 
-			APClient::DataStorageOperation operation;
-			operation.operation = "default";
-			operation.value = false;
-
-			std::list<APClient::DataStorageOperation> operations;
-
-			operations.push_back(operation);
-
-
-			nlohmann::json a;
-
-			ap->Set(epID, a, false, operations);
+			ap->Set(epID, NULL, false, { {"default", false} });
 
 			EPIDs.push_back(epID);
 		}
@@ -1017,14 +999,7 @@ void APWatchdog::CheckEPs() {
 			if (!EPStates[ep]) {
 				EPStates[ep] = true;
 
-				APClient::DataStorageOperation operation;
-				operation.operation = "replace";
-				operation.value = true;
-
-				std::list<APClient::DataStorageOperation> operations;
-				operations.push_back(operation);
-
-				ap->Set(epID, NULL, false, operations);
+				ap->Set(epID, NULL, false, { {"replace", true} });
 			}
 		}
 	}
@@ -1041,18 +1016,7 @@ void APWatchdog::CheckLasers() {
 			laserStates[laser] = false;
 			laserIDs.push_back(laserID);
 
-			APClient::DataStorageOperation operation;
-			operation.operation = "default";
-			operation.value = false;
-
-			std::list<APClient::DataStorageOperation> operations;
-
-			operations.push_back(operation);
-
-
-			nlohmann::json a;
-
-			ap->Set(laserID, a, false, operations);
+			ap->Set(laserID, NULL, false, {{ "default", false }});
 
 			laserIDs.push_back(laserID);
 		}
@@ -1070,14 +1034,7 @@ void APWatchdog::CheckLasers() {
 			if (!laserStates[laser]) {
 				laserStates[laser] = true;
 
-				APClient::DataStorageOperation operation;
-				operation.operation = "replace";
-				operation.value = true;
-
-				std::list<APClient::DataStorageOperation> operations;
-				operations.push_back(operation);
-
-				ap->Set(laserID, NULL, false, operations);
+				ap->Set(laserID, NULL, false, { {"replace", true} });
 			}
 		}
 	}
@@ -1454,4 +1411,25 @@ void APWatchdog::LookingAtObelisk() {
 	}
 
 	return;
+}
+
+void APWatchdog::SendEnergy() {
+	int output = energyLink->getPowerOutput();
+
+	APClient::DataStorageOperation operation;
+	operation.operation = "add";
+	operation.value = output;
+
+	std::list<APClient::DataStorageOperation> operations;
+	operations.push_back(operation);
+
+	ap->Set("EnergyLink", NULL, false, operations, { {"WitnessAuthor", ap->get_player_number()} });
+}
+
+void APWatchdog::HandleEnergyLinkResponse(int value, int original_value, int player) {
+	if (player != ap->get_player_number()) {
+		return;
+	}
+
+	hudManager->queueBannerMessage("Sent " + Utilities::convertToSI(value - original_value) + "J.");
 }
