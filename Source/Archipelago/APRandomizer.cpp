@@ -52,10 +52,18 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 		objectsToMountIDs[mountId].push_back(id);
 	}
 
+	std::map<int, std::vector<float>> correctPositions;
+
 	for (int door : allDoorsEver) {
 		std::vector<int> mounts = getRecursiveMounts(objectsToMountIDs, door);
 
 		doorsToMountIDs[door] = mounts;
+
+		for (int mount : mounts) {
+			correctPositions[mount] = _memory->ReadPanelData<float>(mount, POSITION, 8);
+		}
+
+		correctPositions[door] = _memory->ReadPanelData<float>(door, POSITION, 8);
 	}
 
 
@@ -77,12 +85,29 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 		s << "\n";
 	}
 
-	s << "}";
+	s << "}\n\n\n";
 
 	OutputDebugStringW(s.str().c_str());
 
 
 
+	OutputDebugStringW(L"{\n");
+
+	for (auto const& [key, val] : correctPositions)
+	{
+		std::wstringstream s2;
+		s2 << "{ 0x" << std::hex << key;
+		s2 << ", {";
+		for (float position : val) {
+			s2 << position << "f,";
+		}
+		s2 << "}},";
+
+		s2 << "\n";
+		OutputDebugStringW(s2.str().c_str());
+	}
+
+	OutputDebugStringW(L"}");
 
 
 
