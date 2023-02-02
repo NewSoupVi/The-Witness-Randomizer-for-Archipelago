@@ -11,6 +11,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #define _APCLIENT_HPP
 
 
+#ifdef _WSWRAP_HPP
+#ifndef WSWRAP_SEND_EXCEPTIONS
+#warning "Can't set exception behavior. wswrap already included"
+#endif
+#else
+#define WSWRAP_SEND_EXCEPTIONS // backwards compatibility for at least 1 version
+#endif
+
+
 #include <wswrap.hpp>
 #include <string>
 #include <list>
@@ -35,6 +44,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <limits>
 
 
+#ifndef WSWRAP_VERSION
+#define WSWRAP_VERSION 10000 // 1.0 did not have this define
+#endif
+
+
 //#define APCLIENT_DEBUG // to get debug output
 
 
@@ -50,21 +64,44 @@ protected:
 
 public:
     static constexpr int64_t INVALID_NAME_ID = std::numeric_limits<int64_t>::min();
+    static constexpr char DEFAULT_URI[] = "localhost:38281";
 
-    APClient(const std::string& uuid, const std::string& game, const std::string& uri = "ws://localhost:38281")
+    APClient(const std::string& uuid, const std::string& game, const std::string& uri = DEFAULT_URI,
+             const std::string& certStore="")
     {
+        // check if certStore is supported and required
+        #if WSWRAP_VERSION < 10100 && !defined __EMSCRIPTEN__
+        if (!certStore.empty()) {
+            log("Cert store not supported, please update wswrap!\n");
+        }
+        #elif !defined __EMSCRIPTEN__
+        _certStore = certStore;
+        #else
+        (void)certStore; // avoid warning
+        #endif
+
+        // check if wss is requested and supported
+        #if WSWRAP_VERSION < 10100 && !defined __EMSCRIPTEN__
+        if (uri.rfind("wss://", 0) == 0) {
+            auto msg = "No SSL support. Please update wswrap library!";
+            log(msg);
+            throw std::invalid_argument(msg);
+        } else
+        #endif
+
         // fix up URI (add ws:// and default port if none is given)
-        // TODO: move this to the front-end once we have wss:// and ws://
-        //       or multiple rooms on the same port
         if (!uri.empty()) {
             auto p = uri.find("://");
             if (p == uri.npos) {
+                #if WSWRAP_VERSION >= 10100 || defined __EMSCRIPTEN__
+                _tryWSS = true;
+                #endif
                 _uri = "ws://" + uri;
                 p = 2;
             } else {
                 _uri = uri;
             }
-            auto pColon = _uri.find(":", p + 3);
+            auto pColon = _uri.find(":", p + 3); // FIXME: this fails for IPv6 addresses
             auto pSlash = _uri.find("/", p + 3);
             if (pColon == _uri.npos || (pSlash != _uri.npos && pColon > pSlash)) {
                 auto tmp = _uri.substr(0, pSlash) + ":38281";
@@ -72,6 +109,7 @@ public:
                 _uri = tmp;
             }
         }
+
         _uuid = uuid;
         _game = game;
         _dataPackage = {
@@ -344,9 +382,16 @@ public:
         _hOnRetrieved = f;
     }
 
-    void set_set_reply_handler(std::function<void(const std::string&, const json&, const json&)> f)
+    void set_set_reply_handler(std::function<void(const json& command)> f)
     {
         _hOnSetReply = f;
+    }
+
+    void set_set_reply_handler(std::function<void(const std::string&, const json&, const json&)> f) {
+        set_set_reply_handler([f](const json& command) {
+            if (!f) return;
+            f(command["key"].get<std::string>(), command["value"], command["original_value"]);
+        });
     }
 
     void set_data_package(const json& data)
@@ -388,7 +433,7 @@ public:
             buf[len] = 0;
             try {
                 set_data_package(json::parse(buf));
-            } catch (std::exception) {
+            } catch (const std::exception&) {
                 free(buf);
                 fclose(f);
                 throw;
@@ -688,16 +733,21 @@ public:
     }
 
     bool Set(const std::string& key, const json& dflt, bool want_reply,
-             const std::list<DataStorageOperation>& operations)
+             const std::list<DataStorageOperation>& operations, const json& extras = json::value_t::object)
     {
         if (_state < State::SLOT_CONNECTED) return false;
+
         auto packet = json{{
            {"cmd", "Set"},
            {"key", key},
            {"default", dflt},
            {"want_reply", want_reply},
-           {"operations", operations}
+           {"operations", operations},
         }};
+
+        if (!extras.is_null())
+            packet[0].update(extras);
+
         debug("> " + packet[0]["cmd"].get<std::string>() + ": " + packet.dump());
         _ws->send(packet.dump());
         return true;
@@ -763,7 +813,7 @@ public:
         if (_ws) _ws->poll();
         if (_state < State::SOCKET_CONNECTED) {
             auto t = now();
-            if (t - _lastSocketConnect > _socketReconnectInterval) {
+            if (t - _lastSocketConnect > _socketReconnectInterval || _reconnectNow) {
                 if (_state != State::DISCONNECTED)
                     log("Connect timed out. Retrying.");
                 else
@@ -1031,14 +1081,15 @@ private:
                 }
                 else if (cmd == "SetReply") {
                     if (_hOnSetReply) {
-                        _hOnSetReply(command["key"].get<std::string>(), command["value"], command["original_value"]);
+                        command["original_value"]; // insert null if missing
+                        _hOnSetReply(command);
                     }
                 }
                 else {
                     debug("unhandled cmd");
                 }
             }
-        } catch (std::exception& ex) {
+        } catch (const std::exception& ex) {
             log((std::string("onmessage() error: ") + ex.what()).c_str());
         }
     }
@@ -1046,10 +1097,20 @@ private:
     void onerror()
     {
         debug("onerror()");
+        // TODO: on desktop, we could check if the error was handle_read_http_response before switching to wss://
+        //       and handle_transport_init before switching to ws://
+        if (_tryWSS && _uri.rfind("ws://", 0) == 0) {
+            _uri = "wss://" + _uri.substr(5);
+            if (_state == State::SOCKET_CONNECTING)
+                _reconnectNow = true; // force immediate connect attempt
+        } else if (_tryWSS && _uri.rfind("wss://", 0) == 0) {
+            _uri = "ws://" + _uri.substr(6);
+        }
     }
 
     void connect_socket()
     {
+        _reconnectNow = false;
         delete _ws;
         if (_uri.empty()) {
             _ws = nullptr;
@@ -1057,12 +1118,21 @@ private:
             return;
         }
         _state = State::SOCKET_CONNECTING;
-        _ws = new WS(_uri,
-                [this]() { onopen(); },
-                [this]() { onclose(); },
-                [this](const std::string& s) { onmessage(s); },
-                [this]() { onerror(); }
-        );
+
+        try {
+            _ws = new WS(_uri,
+                    [this]() { onopen(); },
+                    [this]() { onclose(); },
+                    [this](const std::string& s) { onmessage(s); },
+                    [this]() { onerror(); }
+#if WSWRAP_VERSION >= 10100
+                    , _certStore
+#endif
+            );
+        } catch (const std::exception& ex) {
+            _ws = nullptr;
+            log((std::string("error connecting: ") + ex.what()).c_str());
+        }
         _lastSocketConnect = now();
         _socketReconnectInterval *= 2;
         // NOTE: browsers have a very badly implemented connection rate limit
@@ -1109,8 +1179,10 @@ private:
     std::string _uri;
     std::string _game;
     std::string _uuid;
+    std::string _certStore;
     WS* _ws = nullptr;
     State _state = State::DISCONNECTED;
+    bool _tryWSS = false;
 
     std::function<void(void)> _hOnSocketConnected = nullptr;
     std::function<void(void)> _hOnSocketDisconnected = nullptr;
@@ -1126,10 +1198,11 @@ private:
     std::function<void(const json&)> _hOnBounced = nullptr;
     std::function<void(const std::list<int64_t>&)> _hOnLocationChecked = nullptr;
     std::function<void(const std::map<std::string, json>&)> _hOnRetrieved = nullptr;
-    std::function<void(const std::string&, const json&, const json&)> _hOnSetReply = nullptr;
+    std::function<void(const json&)> _hOnSetReply = nullptr;
 
     unsigned long _lastSocketConnect;
     unsigned long _socketReconnectInterval = 1500;
+    bool _reconnectNow = false;
     std::set<int64_t> _checkQueue;
     std::map<int, std::set<int64_t>> _scoutQueues;
     ClientStatus _clientStatus = ClientStatus::UNKNOWN;
