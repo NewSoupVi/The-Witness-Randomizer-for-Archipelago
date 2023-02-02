@@ -1,0 +1,7 @@
+output.c
+Hinweis: Einlesen der Datei: F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\test\testutil\output.h
+Hinweis: Einlesen der Datei:  C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include\stdarg.h
+Hinweis: Einlesen der Datei:   C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include\vcruntime.h
+Hinweis: Einlesen der Datei:    C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include\sal.h
+Hinweis: Einlesen der Datei:     C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include\concurrencysal.h
+Hinweis: Einlesen der Datei:    C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include\vadefs.h
