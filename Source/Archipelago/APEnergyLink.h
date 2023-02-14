@@ -4,65 +4,21 @@
 #include "PuzzleData.h"
 #include <stdexcept>
 
-class APEnergyLink {
-private:
-	std::shared_ptr<Memory> _memory;
-	void setSymmetry(std::shared_ptr<Generate> gen, bool rotationalAllowed, int random, bool weirdStarting);
-	void setSymmetry(std::shared_ptr<Generate> gen, bool rotationalAllowed, int random) {
-		setSymmetry(gen, rotationalAllowed, random, false);
-	}
-public:
-	APEnergyLink(APState* s) {
-		state = s;
-		generator = std::make_shared<Generate>();
-		_memory = std::make_shared<Memory>("witness64_d3d11.exe");
-		basePuzzle = new PuzzleData(0x2899C);
-		_memory->WriteArray<int>(0x0042D, 0x410, std::vector<int>(500, 0));
-		basePuzzle->Read(_memory);
-		basePuzzle->id = 0x0042D;
-	}
-
-	std::shared_ptr<Generate> generator;
-
-	void generateNewPuzzle(int id);
-	void generateRandomPuzzle(int id);
-	int chooseSymbolCombination();
-
-	int getPowerOutput();
-
-	int countSymbols();
-
-	PuzzleData* basePuzzle;
-
-	std::mt19937 random = std::mt19937{ std::random_device{}() };
-
-	APState* state;
-
-	enum Shape : int {
-		Arrows = 0x1,
-		BWSquare = 0x2,
-		ColoredSquare = 0x4,
-		Dots = 0x8,
-		FullDots = 0x10,
-		ColoredDots = 0x20,
-		Symmetry = 0x40,
-		Triangles = 0x80,
-		Gaps = 0x100,
-		Stars = 0x200,
-		StarSameColor = 0x400,
-		Shapers = 0x800,
-		RotatedShapers = 0x1000,
-		NegativeShapers = 0x2000,
-		Eraser = 0x4000,
-		WeirdStarting = 0x8000,
-	};
-};
-
 class GenerationData {
+public:
 	GenerationData(std::string inputString) {
 		parseInputString(inputString);
 	}
 
+	std::vector<std::pair<int, int>> symbols;
+
+	int gridX = 4;
+	int gridY = 4;
+
+	std::vector<int> allowedSymmetryTypes = { };
+
+	std::vector<APEnergyLink::Shape> requiredSymbols;
+private:
 	std::map<std::string, int> decorationsMap = {
 		{"Dot", Decoration::Dot},
 		{"IntersectionDot", Decoration::Dot_Intersection},
@@ -107,13 +63,65 @@ class GenerationData {
 	int getDecorationFlag(std::string token);
 	void handleToken(std::string token);
 	void parseInputString(std::string inputString);
+};
 
-	std::vector<std::pair<int, int>> symbols;
+class APEnergyLink {
+private:
+	std::shared_ptr<Memory> _memory;
+	void setSymmetry(std::shared_ptr<Generate> gen, bool rotationalAllowed, int random, bool weirdStarting);
+	void setSymmetry(std::shared_ptr<Generate> gen, bool rotationalAllowed, int random) {
+		setSymmetry(gen, rotationalAllowed, random, false);
+	}
+public:
+	APEnergyLink(APState* s) {
+		state = s;
+		generator = std::make_shared<Generate>();
+		_memory = std::make_shared<Memory>("witness64_d3d11.exe");
+		basePuzzle = new PuzzleData(0x2899C);
+		_memory->WriteArray<int>(0x0042D, 0x410, std::vector<int>(500, 0));
+		basePuzzle->Read(_memory);
+		basePuzzle->id = 0x0042D;
 
-	int gridX = 4;
-	int gridY = 4;
+		parseGenerationDatas();
+	}
 
-	std::vector<int> allowedSymmetryTypes = { };
+	std::shared_ptr<Generate> generator;
 
-	std::vector<APEnergyLink::Shape> requiredSymbols;
+	void parseGenerationDatas();
+	std::vector<GenerationData> parseGenerationData(std::string data);
+
+	void generateNewPuzzle(int id);
+	void generateRandomPuzzle(int id);
+	GenerationData chooseSymbolCombination(int minDifficulty, int maxDifficulty);
+
+	int getPowerOutput();
+
+	int countSymbols();
+
+	PuzzleData* basePuzzle;
+
+	std::mt19937 random = std::mt19937{ std::random_device{}() };
+
+	APState* state;
+
+	enum Shape : int {
+		Arrows = 0x1,
+		BWSquare = 0x2,
+		ColoredSquare = 0x4,
+		Dots = 0x8,
+		FullDots = 0x10,
+		ColoredDots = 0x20,
+		Symmetry = 0x40,
+		Triangles = 0x80,
+		Gaps = 0x100,
+		Stars = 0x200,
+		StarSameColor = 0x400,
+		Shapers = 0x800,
+		RotatedShapers = 0x1000,
+		NegativeShapers = 0x2000,
+		Eraser = 0x4000,
+		WeirdStarting = 0x8000,
+	};
+
+	std::map<int, std::vector<GenerationData>> choosablePuzzles;
 };

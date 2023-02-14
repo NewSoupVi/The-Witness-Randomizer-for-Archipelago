@@ -1,4 +1,5 @@
 #include "APEnergyLink.h"
+#include <regex>
 
 void APEnergyLink::generateNewPuzzle(int id)
 {
@@ -44,17 +45,11 @@ void APEnergyLink::setSymmetry(std::shared_ptr<Generate> gen, bool rotationalAll
 }
 
 void APEnergyLink::generateRandomPuzzle(int id) {
-	bool done = false;
-
 	basePuzzle->Restore(_memory);
 
-	done = true;
-	done = false;
+	generator->resetConfig();
 
-	while (!done) {
-		generator->resetConfig();
-
-		int combo = chooseSymbolCombination();
+	/*	int combo = chooseSymbolCombination();
 
 		done = true;
 
@@ -309,44 +304,40 @@ void APEnergyLink::generateRandomPuzzle(int id) {
 			OutputDebugStringW(s.str().c_str());
 			done = false;
 		}
-	}
+	}*/
 	
 }
 
-int APEnergyLink::chooseSymbolCombination() {
-	std::set<int> possibleSymbols = { Gaps, WeirdStarting };
-
-	//if (state->unlockedArrows) possibleSymbols.emplace(Arrows); NYI
-	if (state->unlockedDots) possibleSymbols.emplace(Dots);
-	if (state->unlockedFullDots) possibleSymbols.emplace(FullDots);
-	if (state->unlockedErasers) possibleSymbols.emplace(Eraser);
-	if (state->unlockedStones) possibleSymbols.emplace(BWSquare);
-	if (state->unlockedColoredStones) possibleSymbols.emplace(ColoredSquare);
-	if (state->unlockedStars) possibleSymbols.emplace(Stars);
-	if (state->unlockedStarsWithOtherSimbol) possibleSymbols.emplace(StarSameColor);
-	if (state->unlockedTriangles) possibleSymbols.emplace(Triangles);
-	if (state->unlockedSymmetry) possibleSymbols.emplace(Symmetry);
-	if (state->unlockedTetris) possibleSymbols.emplace(Shapers);
-	if (state->unlockedTetrisRotated) possibleSymbols.emplace(RotatedShapers);
-	if (state->unlockedTetrisNegative) possibleSymbols.emplace(NegativeShapers);
-	if (state->unlockedColoredDots) possibleSymbols.emplace(ColoredDots);
-
-	int chosenCombination = 0;
-
-	for (int i = 0; i < 2; i++) {
-		std::vector<int> out;
-		std::sample(possibleSymbols.begin(), possibleSymbols.end(), std::back_inserter(out),
-			1, random);
-
-		int result = out[0];
-		int realResult = result;
-
-		chosenCombination |= result;
-
-		possibleSymbols.erase(result);
+GenerationData APEnergyLink::chooseSymbolCombination(int minDifficulty, int maxDifficulty) {
+	std::vector<GenerationData> currentValidPuzzles;
+	
+	for (auto const& [key, value] : choosablePuzzles) {
+		if (minDifficulty <= key && key <= maxDifficulty) {
+			std::vector<GenerationData> puzzlesOfThisDifficulty;
+			currentValidPuzzles.insert(currentValidPuzzles.end(), puzzlesOfThisDifficulty.begin(), puzzlesOfThisDifficulty.end());
+		}
 	}
 
-	return chosenCombination;
+	
+}
+
+void APEnergyLink::parseGenerationDatas() {
+	choosablePuzzles[0] = parseGenerationData("EnergyLinkPuzzles/Level0.txt");
+}
+
+std::vector<GenerationData> APEnergyLink::parseGenerationData(std::string inFile) {
+	std::vector<GenerationData> outData;
+	
+	std::fstream newfile;
+	newfile.open(inFile);
+	std::string line;
+	while (getline(newfile, line)) {
+		if (line == "") continue;
+
+		outData.push_back(GenerationData(line));
+	}
+
+	return outData;
 }
 
 int APEnergyLink::getPowerOutput() {
@@ -423,7 +414,14 @@ void GenerationData::handleToken(std::string token) {
 		return;
 	}
 
-	std::string delimiter = ", ";
+	std::regex re("[0-9]+x[0-9]+");
+
+	if (std::regex_match(token, re)) {
+		auto pos = token.find("x");
+		gridX = atoi(token.substr(0, pos).c_str());
+		gridY = atoi(token.substr(pos + 1, token.length()).c_str());
+		return;
+	}
 
 	size_t pos = 0;
 	std::string subtoken;
@@ -431,8 +429,9 @@ void GenerationData::handleToken(std::string token) {
 	int decoration = 0;
 	int amount = -1;
 
-	while ((pos = token.find(delimiter)) != std::string::npos) {
+	while ((pos = token.find(" ")) != std::string::npos) {
 		subtoken = token.substr(0, pos);
+		token.erase(0, pos + 1);
 		
 		if (is_number(subtoken)) {
 			amount = atoi(subtoken.c_str());
