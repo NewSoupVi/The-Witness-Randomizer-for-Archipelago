@@ -11,11 +11,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #define _APCLIENT_HPP
 
 
-#ifdef _WSWRAP_HPP
-#ifndef WSWRAP_SEND_EXCEPTIONS
+#if defined _WSWRAP_HPP && !defined WSWRAP_SEND_EXCEPTIONS
 #warning "Can't set exception behavior. wswrap already included"
-#endif
-#else
+#elif !defined WSWRAP_SEND_EXCEPTIONS
 #define WSWRAP_SEND_EXCEPTIONS // backwards compatibility for at least 1 version
 #endif
 

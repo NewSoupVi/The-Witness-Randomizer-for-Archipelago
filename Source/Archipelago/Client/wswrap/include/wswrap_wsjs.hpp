@@ -101,6 +101,10 @@ namespace wswrap {
             return 0;
         }
 
+        void stop()
+        {
+        }
+
     private:
         void warn(const char* fmt, ...)
         {

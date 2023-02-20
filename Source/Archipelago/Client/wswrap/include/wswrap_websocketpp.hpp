@@ -26,6 +26,9 @@
 #ifdef _WIN32
 #include <wincrypt.h>
 #endif
+#ifdef WSWRAP_ASYNC_CLEANUP
+#include <thread>
+#endif
 
 
 namespace wswrap {
@@ -37,14 +40,14 @@ namespace wswrap {
         typedef websocketpp::client<websocketpp::config::asio_tls_client> WSSClient;
         typedef asio::ssl::context SSLContext;
         typedef std::shared_ptr<SSLContext> SSLContextPtr;
-        typedef struct WSS_IMPL {
+        struct WSS_IMPL {
             typedef WSSClient Client;
             Client first;
             Client::connection_ptr second;
         };
 #endif
         typedef websocketpp::client<websocketpp::config::asio_client> WSClient;
-        typedef struct WS_IMPL {
+        struct WS_IMPL {
             typedef WSClient Client;
             Client first;
             Client::connection_ptr second;
@@ -146,12 +149,23 @@ namespace wswrap {
 
         bool poll()
         {
-            return _service->poll();
+            _polling = true;
+            auto res = _service->poll();
+            _polling = false;
+            return res;
         }
 
         size_t run()
         {
-            return _service->run();
+            _polling = true;
+            auto res = _service->run();
+            _polling = false;
+            return res;
+        }
+
+        void stop()
+        {
+            _service->stop();
         }
 
     private:
@@ -221,6 +235,8 @@ namespace wswrap {
                 ctx->set_options(SSLContext::default_workarounds |
                                  SSLContext::no_sslv2 |
                                  SSLContext::no_sslv3 |
+                                 SSLContext::no_tlsv1 |
+                                 SSLContext::no_tlsv1_1 |
                                  SSLContext::single_dh_use, ec);
                 if (ec) warn("Error in ssl init: options: %s\n", ec.message().c_str());
                 if (validate_cert) {
@@ -231,7 +247,7 @@ namespace wswrap {
                     if (store_path.empty() || !!ec) {
 #ifdef _WIN32
                         // try to load certs from windows ca store
-                        HCERTSTORE hStore = CertOpenSystemStore(0, L"ROOT");
+                        HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
                         if (hStore) {
                             X509_STORE* store = X509_STORE_new();
                             PCCERT_CONTEXT cert = NULL;
@@ -314,6 +330,13 @@ namespace wswrap {
         template<class T>
         void cleanup()
         {
+            #if defined _WIN32 && !defined WSWRAP_ASYNC_CLEANUP && defined __cpp_exceptions
+            // NOTE: the destructor can not be called from a ws callback in some
+            //       circumstances, otherwise it will hang at delete impl on Windows.
+            if (_polling) {
+                throw std::runtime_error("Cannot delete WS from a callback unless WSWRAP_ASYNC_CLEANUP is defined!");
+            }
+            #endif
             T* impl = (T*)_impl;
             auto& client = impl->first;
             auto& conn = impl->second;
@@ -345,12 +368,33 @@ namespace wswrap {
                 conn = nullptr;
                 client.stop();
             }
-            // NOTE: the destructor can not be called from a ws callback in some
-            //       circumstances, otherwise it will hang here. TODO: Document this.
+            #ifdef WSWRAP_ASYNC_CLEANUP
+            if (_polling) {
+                auto service = _service;
+                std::thread([impl, service]() {
+                    delete impl;
+                    delete service;
+                }).detach();
+                _impl = nullptr;
+                _service = nullptr;
+            } else {
+                delete impl;
+                _impl = nullptr;
+                delete _service;
+                _service = nullptr;
+            }
+            #else
+            if (_polling) {
+                warn("Cannot delete WS from a callback on all platforms unless WSWRAP_ASYNC_CLEANUP is defined!\n");
+                #ifdef _WIN32
+                return;
+                #endif
+            }
             delete impl;
             _impl = nullptr;
             delete _service;
             _service = nullptr;
+            #endif
         }
 
         void cleanup()
@@ -390,6 +434,7 @@ namespace wswrap {
         void *_impl;
         SERVICE *_service;
         bool _secure;
+        bool _polling = false;
     };
 
 }; // namespace wsrap
