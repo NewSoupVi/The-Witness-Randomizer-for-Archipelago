@@ -86,8 +86,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
-    <IncludePath>F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <ExternalIncludePath>F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <IncludePath>..\Source\Archipelago\Client\openssl\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <ExternalIncludePath>..\Source\Archipelago\Client\openssl\include;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
