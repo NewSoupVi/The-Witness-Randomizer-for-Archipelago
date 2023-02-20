@@ -174,6 +174,14 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 			}
 		}
 
+		if (slotData.contains("disabled_panels")) {
+			for (std::string keys : slotData["disabled_panels"]) {
+				int key = std::stoul(keys, nullptr, 16);
+				if (!actuallyEveryPanel.count(key)) continue;
+				disabledPanels.insert(key);
+			}
+		}
+
 		if (slotData.contains("item_id_to_door_hexes")) {
 			for (auto& [key, val] : slotData["item_id_to_door_hexes"].items()) {
 				int itemId = std::stoul(key, nullptr, 10);
@@ -202,18 +210,15 @@ bool APRandomizer::Connect(HWND& messageBoxHandle, std::string& server, std::str
 				int logId = std::stoul(key, nullptr, 10);
 				std::string message;
 				int64_t location_id_in_this_world = -1;
-				for (int i = 0; i < val.size(); i++) {
-					if (i < 3) {
-						std::string line = val[i];
-						if (!line.empty()) {
-							message.append(line);
-							message.append(" ");
-						}
-					}
-					else {
-						location_id_in_this_world = val[i];
+				for (int i = 0; i < val.size() - 1; i++) {
+					std::string line = val[i];
+					if (!line.empty()) {
+						message.append(line);
+						message.append(" ");
 					}
 				}
+
+				location_id_in_this_world = val[val.size() - 1];
 				
 				audioLogMessages.insert({ logId, std::pair(message, location_id_in_this_world) });
 			}
@@ -483,15 +488,17 @@ void APRandomizer::Init() {
 }
 
 void APRandomizer::GenerateNormal(HWND skipButton, HWND availableSkips) {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips, epToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state);
+	Special::SetVanillaMetapuzzleShapes();
+
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips, epToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)
-		panelLocker->DisableNonRandomizedPuzzles(doorsActuallyInTheItemPool);
+		panelLocker->DisableNonRandomizedPuzzles(disabledPanels, doorsActuallyInTheItemPool);
 }
 
 void APRandomizer::GenerateHard(HWND skipButton, HWND availableSkips) {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips, epToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, skipButton, availableSkips, epToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor);
 	SeverDoors();
 
 	//Mess with Town targets
@@ -510,7 +517,7 @@ void APRandomizer::GenerateHard(HWND skipButton, HWND availableSkips) {
 	_memory->PowerNext(0x03629, 0x36);
 
 	if (DisableNonRandomizedPuzzles)
-		panelLocker->DisableNonRandomizedPuzzles(doorsActuallyInTheItemPool);
+		panelLocker->DisableNonRandomizedPuzzles(disabledPanels, doorsActuallyInTheItemPool);
 }
 
 void APRandomizer::PreventSnipes()

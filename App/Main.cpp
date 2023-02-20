@@ -212,6 +212,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			apRandomizer->Collect = collect;
 
+			apRandomizer->solveModeSpeedFactor = 0.0f; // THIS VALUE IN THE FUTURE CAN BE USED TO MAKE SPEED BOOSTS TICK DOWN AT A SLOW RATE IN SOLVE MODE RATHER THAN STOP OR GO AT FULL SPEED
+
 			if (!apRandomizer->Connect(hwnd, address, user, password))
 				break;
 
@@ -349,7 +351,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (puzzleRando == SIGMA_EXPERT) randomizer->GenerateHard(hwndLoadingText);
 			else if (puzzleRando == SIGMA_NORMAL) randomizer->GenerateNormal(hwndLoadingText);
 
-			SetWindowText(hwndRandomize, L"Randomized!");
+			SetWindowText(hwndRandomize, L"Disabling...");
 
 			EnableWindow(hwndChallenge, true);
 
@@ -361,7 +363,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			Special::WritePanelData(0x00064, BACKGROUND_REGION_COLOR + 12, seed);
 			Special::WritePanelData(0x00182, BACKGROUND_REGION_COLOR + 12, puzzleRando);
 
+			SetWindowText(hwndRandomize, L"Locking...");
+
 			apRandomizer->PostGeneration(hwndLoadingText);
+
+			SetWindowText(hwndRandomize, L"Randomized!");
 
 			InputWatchdog::get()->start();
 
