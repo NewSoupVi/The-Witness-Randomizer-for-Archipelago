@@ -48,6 +48,24 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 
 //#define APCLIENT_DEBUG // to get debug output
+//#define AP_NO_DEFAULT_DATA_PACKAGE_STORE // to disable auto-construction of data package store
+
+
+class APDataPackageStore {
+protected:
+    typedef nlohmann::json json;
+
+    APDataPackageStore() {}
+
+public:
+    virtual bool load(const std::string& game, const std::string& checksum, json& data) = 0;
+    virtual bool save(const std::string& game, const json& data) = 0;
+};
+
+
+#ifndef AP_NO_DEFAULT_DATA_PACKAGE_STORE
+#include "defaultdatapackagestore.hpp"
+#endif
 
 
 class APClient {
@@ -65,7 +83,8 @@ public:
     static constexpr char DEFAULT_URI[] = "localhost:38281";
 
     APClient(const std::string& uuid, const std::string& game, const std::string& uri = DEFAULT_URI,
-             const std::string& certStore="")
+             const std::string& certStore="", APDataPackageStore* dataPackageStore = nullptr)
+        : _dataPackageStore(dataPackageStore)
     {
         // check if certStore is supported and required
         #if WSWRAP_VERSION < 10100 && !defined __EMSCRIPTEN__
@@ -108,6 +127,19 @@ public:
             }
         }
 
+        #ifndef AP_NO_DEFAULT_DATA_PACKAGE_STORE
+        if (!_dataPackageStore) {
+            _dataPackageStore = new DefaultDataPackageStore();
+            _dataPackageStoreAllocated = true;
+        }
+        #else
+        const char* msg = "dataPackageStore is required if compiled with AP_NO_DEFAULT_DATA_PACKAGE_STORE";
+        fprintf(stderr, "APClient: %s!\n", msg);
+        #ifdef __cpp_exceptions
+        throw std::runtime_error(msg);
+        #endif
+        #endif
+
         _uuid = uuid;
         _game = game;
         _dataPackage = {
@@ -123,6 +155,10 @@ public:
 
     virtual ~APClient()
     {
+#ifndef AP_NO_DEFAULT_DATA_PACKAGE_STORE
+        if (_dataPackageStoreAllocated)
+            delete _dataPackageStore;
+#endif
         delete _ws;
         _ws = nullptr;
     }
@@ -392,34 +428,28 @@ public:
         });
     }
 
+    [[deprecated("Data package is handled through APDataPackageStore now")]]
     void set_data_package(const json& data)
     {
         // only apply from cache if not updated and it looks valid
-        if (!_dataPackageValid && data.find("games") != data.end()) {
-            _dataPackage = data;
-            for (auto gamepair: _dataPackage["games"].items()) {
-                const auto& gamedata = gamepair.value();
-                _dataPackage["games"][gamepair.key()] = gamedata;
-                for (auto pair: gamedata["item_name_to_id"].items()) {
-                    _items[pair.value().get<int64_t>()] = pair.key();
-                }
-                for (auto pair: gamedata["location_name_to_id"].items()) {
-                    _locations[pair.value().get<int64_t>()] = pair.key();
-                }
-            }
-        }
+        if (!_dataPackageValid && data.find("games") != data.end())
+            _set_data_package(data);
     }
 
+    [[deprecated("Data package is handled through APDataPackageStore now")]]
     bool set_data_package_from_file(const std::string& path)
     {
         FILE* f;
+
+        if (!_dataPackageValid)
+            return true;
+
 #ifdef _MSC_VER
-        if ((fopen_s(&f, path.c_str(), "rb")) != 0) {
+        if ((fopen_s(&f, path.c_str(), "rb")) != 0)
 #else
-        if ((f = fopen(path.c_str(), "rb")) == NULL) {
+        if ((f = fopen(path.c_str(), "rb")) == NULL)
 #endif
             return false;
-        }
         char* buf = nullptr;
         size_t len = (size_t)0;
         if ((0 == fseek(f, 0, SEEK_END)) &&
@@ -430,7 +460,9 @@ public:
         {
             buf[len] = 0;
             try {
-                set_data_package(json::parse(buf));
+                auto data = json::parse(buf);
+                if (data.find("games") != data.end())
+                    _set_data_package(data);
             } catch (const std::exception&) {
                 free(buf);
                 fclose(f);
@@ -442,16 +474,16 @@ public:
         return true;
     }
 
+    [[deprecated("Data package is handled through APDataPackageStore now")]]
     bool save_data_package(const std::string& path)
     {
         FILE* f;
 #ifdef _MSC_VER
-        if ((fopen_s(&f, path.c_str(), "wb")) != 0) {
+        if ((fopen_s(&f, path.c_str(), "wb")) != 0)
 #else
-        if ((f = fopen(path.c_str(), "wb")) == NULL) {
+        if ((f = fopen(path.c_str(), "wb")) == NULL)
 #endif
             return false;
-        }
         std::string s = _dataPackage.dump();
         fwrite(s.c_str(), 1, s.length(), f);
         fclose(f);
@@ -841,10 +873,12 @@ private:
     {
         printf("APClient: %s\n", msg);
     }
+
     void log(const std::string& msg)
     {
         log(msg.c_str());
     }
+
     void debug(const char* msg)
     {
 #ifdef APCLIENT_DEBUG
@@ -853,6 +887,7 @@ private:
         (void)msg;
 #endif
     }
+
     void debug(const std::string& msg)
     {
         debug(msg.c_str());
@@ -913,47 +948,95 @@ private:
                     if (_hOnRoomInfo) _hOnRoomInfo();
 
                     // check if cached data package is already valid
-                    // we are nice and check and query individual games
+                    // if not, build a list to query
                     _dataPackageValid = true;
                     std::list<std::string> exclude;
                     std::list<std::string> include;
                     std::set<std::string> playedGames;
                     auto itGames = command.find("games");
                     if (itGames != command.end() && itGames->is_array()) {
+                        // 0.2.0+: use games list, always include "Archipelago"
                         playedGames = itGames->get<std::set<std::string>>();
+                        playedGames.emplace("Archipelago");
+                    } else if (command["datapackage_versions"].is_array()) {
+                        // 0.1.x: get games from datapackage_versions
+                        for (auto itV: command["datapackage_versions"].items()) {
+                            playedGames.emplace(itV.key());
+                        }
+                    } else {
+                        // alpha: summed datapackage_version, not supported, always fetch all
+                        _dataPackageValid = false;
                     }
-                    for (auto itV: command["datapackage_versions"].items()) {
-                        if (!playedGames.empty() && !playedGames.count(itV.key()) && itV.key() != "Archipelago") {
-                            // game exists but is not being played
-                            exclude.push_back(itV.key());
-                            continue;
+
+                    auto itVersions = command.find("datapackage_versions");
+                    if (itVersions != command.end() && !itVersions->is_object()) itVersions = command.end();
+                    auto itChecksums = command.find("datapackage_checksums");
+                    if (itChecksums != command.end() && !itChecksums->is_object()) itChecksums = command.end();
+
+                    if (itVersions != command.end() && !playedGames.empty()) {
+                        // pre 0.3.2: exclude games that exist but are not being played
+                        for (auto itV: command["datapackage_versions"].items()) {
+                            if (!playedGames.count(itV.key())) {
+                                exclude.push_back(itV.key());
+                            }
                         }
-                        if (!itV.value().is_number()) continue;
-                        int v = itV.value().get<int>();
-                        if (v < 1) {
-                            // 0 means don't cache
-                            _dataPackageValid = false;
-                            include.push_back(itV.key());
-                            continue;
-                        }
-                        auto itDp = _dataPackage["games"].find(itV.key());
-                        if (itDp == _dataPackage["games"].end()) {
-                            // new game
-                            _dataPackageValid = false;
-                            include.push_back(itV.key());
-                            continue;
-                        }
-                        if ((*itDp)["version"] != v) {
-                            // different version
-                            _dataPackageValid = false;
-                            include.push_back(itV.key());
-                            continue;
-                        }
-                        // ok, cache valid
-                        exclude.push_back(itV.key());
                     }
+
+                    for (const auto& game: playedGames) {
+                        std::string remoteChecksum;
+                        int remoteVersion = 0;
+                        if (itChecksums != command.end()) {
+                            auto itChecksum = itChecksums->find(game);
+                            if (itChecksum != itChecksums->end() && itChecksum->is_string())
+                                remoteChecksum = *itChecksum;
+                        }
+                        if (itVersions != command.end()) {
+                            auto itVersion = itVersions->find(game);
+                            if (itVersion != itVersions->end() && itVersion->is_number_integer())
+                                remoteVersion = *itVersion;
+                        }
+                        json localData;
+                        if (!_dataPackageStore || !_dataPackageStore->load(game, remoteChecksum, localData)) {
+                            if (remoteChecksum.empty() && remoteVersion != 0) {
+                                auto itOld = _dataPackage["games"].find(game);
+                                if (itOld != _dataPackage["games"].end()) {
+                                    // exists in migrated cache
+                                    auto itOldVersion = itOld->find("version");
+                                    if (itOldVersion != itOld->end() && *itOldVersion == remoteVersion) {
+                                        // and is recent
+                                        exclude.push_back(game);
+                                        continue;
+                                    }
+                                }
+                            }
+                            include.push_back(game);
+                            _dataPackageValid = false;
+                        } else if (!remoteChecksum.empty()) {
+                            // compare checksum
+                            auto it = localData.find("checksum");
+                            if (it != localData.end() && it->is_string() && *it == remoteChecksum) {
+                                _dataPackage["games"][game] = localData;
+                                exclude.push_back(game);
+                            } else {
+                                include.push_back(game);
+                                _dataPackageValid = false;
+                            }
+                        } else {
+                            const auto it = localData.find("version");
+                            if (remoteVersion != 0 && it != localData.end() && it->is_number_integer() && *it == remoteVersion) {
+                                _dataPackage["games"][game] = localData;
+                                exclude.push_back(game);
+                            } else {
+                                include.push_back(game);
+                                _dataPackageValid = false;
+                            }
+                        }
+                    }
+
+                    if (!exclude.empty())
+                        _set_data_package(_dataPackage);  // apply loaded strings
                     if (!_dataPackageValid) GetDataPackage(exclude, include);
-                    else debug("DataPackage up to date");
+                    else debug("Data package up to date");
                 }
                 else if (cmd == "ConnectionRefused") {
                     if (_hOnSlotRefused) {
@@ -1052,11 +1135,14 @@ private:
                     auto data = _dataPackage;
                     if (!data["games"].is_object())
                         data["games"] = json(json::value_t::object);
-                    for (auto gamepair: command["data"]["games"].items())
+                    for (auto gamepair: command["data"]["games"].items()) {
+                        if (_dataPackageStore)
+                            _dataPackageStore->save(gamepair.key(), gamepair.value());
                         data["games"][gamepair.key()] = gamepair.value();
-                    data["version"] = command["data"]["version"];
+                    }
+                    data["version"] = command["data"].value<int>("version", -1); // -1 for backwards compatibility
                     _dataPackageValid = false;
-                    set_data_package(data);
+                    _set_data_package(data);
                     _dataPackageValid = true;
                     if (_hOnDataPackageChanged) _hOnDataPackageChanged(_dataPackage);
                 }
@@ -1140,6 +1226,21 @@ private:
         if (_socketReconnectInterval > maxReconnectInterval) _socketReconnectInterval = maxReconnectInterval;
     }
 
+    void _set_data_package(const json& data)
+    {
+        _dataPackage = data;
+        for (auto gamepair: _dataPackage["games"].items()) {
+            const auto& gamedata = gamepair.value();
+            _dataPackage["games"][gamepair.key()] = gamedata;
+            for (auto pair: gamedata["item_name_to_id"].items()) {
+                _items[pair.value().get<int64_t>()] = pair.key();
+            }
+            for (auto pair: gamedata["location_name_to_id"].items()) {
+                _locations[pair.value().get<int64_t>()] = pair.key();
+            }
+        }
+    }
+
     std::string color2ansi(const std::string& color)
     {
         // convert color to ansi color command
@@ -1216,6 +1317,10 @@ private:
     double _serverConnectTime = 0;
     std::chrono::steady_clock::time_point _localConnectTime;
     Version _serverVersion = {0,0,0};
+    APDataPackageStore* _dataPackageStore;
+#ifndef AP_NO_DEFAULT_DATA_PACKAGE_STORE
+    bool _dataPackageStoreAllocated = false;
+#endif
 
     const json _packetSchemaJson = R"({
         "type": "array",

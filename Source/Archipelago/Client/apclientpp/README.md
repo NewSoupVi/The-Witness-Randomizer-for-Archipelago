@@ -27,7 +27,6 @@ C++ Archipelago multiworld randomizer client library. See [archipelago.gg](https
 * include apclient.hpp
 * instantiate APClient and use its API
   * you can use `ap_get_uuid` from `apuuid.hpp` helper to generate a UUID
-  * use `set_data_package` and `set_data_package_changed_handler` to load and save data package
   * use `set_*_handler` to set event callbacks
   * call `poll` repeatedly (e.g. once per frame) for it to connect and callbacks to fire
   * use `ConnectSlot` to connect to a slot after RoomInfo
@@ -36,6 +35,12 @@ C++ Archipelago multiworld randomizer client library. See [archipelago.gg](https
   * use `Bounce` to send a bounce (deathlink, ...)
   * use `Get`, `Set` and `SetNotify` to access data storage api,
     see [Archipelago network protocol](https://github.com/ArchipelagoMW/Archipelago/blob/main/docs/network%20protocol.md#get)
+  * by default we now use the shared data package cache in %LocalAppData%/Archipelago/Cache or ~/.cache/Archipelago.
+    This can be changed by passing a custom APDataPackageStore into APClient.
+* when upgrading from 0.3.8 or older
+  * remove calls to `save_data_package` and don't save data package in `set_data_package_changed_handler`
+  * you can still use `set_data_package` or `set_data_package_from_file` during migration to make use of the old cache
+    (they are marked as deprecated and will go away in the next version)
 * see [ap-soeclient](https://github.com/black-sliver/ap-soeclient) for an example
 * see [Gotchas](#gotchas)
 

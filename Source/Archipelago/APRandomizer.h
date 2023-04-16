@@ -1,22 +1,15 @@
 #pragma once
 
-#include <memory>
-#include <set>
+#include "APState.h"
+
 #include <map>
-#include "nlohmann\json.hpp"
-#include "..\Randomizer.h"
-#include "..\Special.h"
-#include "PuzzleData.h"
-#include "APWatchdog.h"
-#include "..\Converty.h"
-#include "..\DateTime.h"
+#include <set>
+#include <string>
+#include <vector>
 
 class APRandomizer {
 	public:
-		APRandomizer() {
-			_memory = std::make_shared<Memory>("witness64_d3d11.exe");
-			panelLocker = new PanelLocker(_memory);
-		};
+		APRandomizer();
 
 		int Seed = 0;
 		int FinalPanel = 0;
@@ -29,6 +22,7 @@ class APRandomizer {
 		bool EPShuffle = false;
 		int MountainLasers = 7;
 		int ChallengeLasers = 11;
+		bool DeathLink;
 
 		int mostRecentItemId = -1;
 
@@ -37,11 +31,11 @@ class APRandomizer {
 		bool connected = false;
 		bool randomizationFinished = false;
 
-		bool Connect(HWND& messageBoxHandle, std::string& server, std::string& user, std::string& password);
-		void PostGeneration(HWND loadingHandle);
+		bool Connect(std::string& server, std::string& user, std::string& password);
+		void PostGeneration();
 
-		void GenerateNormal(HWND skipButton, HWND availableSkips);
-		void GenerateHard(HWND skipButton, HWND availableSkips);
+		void GenerateNormal();
+		void GenerateHard();
 
 		void SkipPuzzle();
 
@@ -64,19 +58,17 @@ class APRandomizer {
 
 		std::map<int, std::set<int>> obeliskSideIDsToEPHexes;
 		std::set<int> precompletedLocations;
-		std::map<int, std::string> epToName;
+		std::map<int, std::string> entityToName;
 
-		std::shared_ptr<Memory> _memory;
-
-		APClient* ap;
-		APWatchdog* async;
-		PanelLocker* panelLocker;
+		class APClient* ap = NULL;
+		class APWatchdog* async;
+		class PanelLocker* panelLocker;
 
 		APState state = APState();
 
 		void PreventSnipes();
 
-		void setPuzzleLocks(HWND loadingHandle);
+		void setPuzzleLocks();
 
 		std::string buildUri(std::string& server);
 };

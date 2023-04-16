@@ -1,9 +1,12 @@
 #pragma once
 
-#include <map>
-#include <vector>
-
 #include "../DataTypes.h"
+
+#include <algorithm>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 
 #define SIGMA_NORMAL 0
 #define SIGMA_EXPERT 1
@@ -169,7 +172,7 @@ inline std::map<int, std::vector<Connection>> severTargetsById = {
 
 	{ 0x0C141, {{0x01983, PANEL, TARGET}, {0x01987, PANEL, TARGET}} }, // Final Room Entry Door
 
-	{ 0x17F33, {{0x17FA2, PANEL, TARGET}, {0x0A3AF, PRESSURE_PLATE, PRESSURE_PLATE_TARGET}} }, // Rock
+	{ 0x17F33, {{0x17FA2, PANEL, TARGET},{0x17FA2, PANEL, ENTITY_NAME}, {0x334E1, PANEL, TARGET},{0x334E1, PANEL, ENTITY_NAME}, {0x0A3AF, PRESSURE_PLATE, PRESSURE_PLATE_TARGET}} }, // Rock
 
 	{ 0x2D77D, {{0x00FF8, PANEL, TARGET}} }, // Door to Caves
 	{ 0x019A5, {{0x09DD5, PANEL, TARGET}} }, // Pillar Door
@@ -782,6 +785,37 @@ const inline int AllPuzzles[]{
 		0x3D9A9,
 };
 
+const inline std::set<int> deathlinkExcludeList = {
+	0x0008F, // UTM Invisible Dots 1
+	0x0006B, // UTM Invisible Dots 2
+	0x0008B, // UTM Invisible Dots 3
+	0x0008C, // UTM Invisible Dots 4
+	0x0008A, // UTM Invisible Dots 5
+	0x00089, // UTM Invisible Dots 6
+	0x0006A, // UTM Invisible Dots 7
+	0x0006C, // UTM Invisible Dots 8
+	0x00027, // UTM Invisible Dots Symmetry 1
+	0x00028, // UTM Invisible Dots Symmetry 2
+	0x00029, // UTM Invisible Dots Symmetry 3
+	0x0C373, // Patio Floor
+	0x0A079, // Bunker Elevator Panel
+};
+
+const inline std::set<int> deathlinkExpertExcludeList = {
+	0x03C0C, // Town RGB Room Left
+	0x00065, 0x0006D, 0x00072, 0x0006F, 0x00070, 0x00071, 0x00076, // Symmetry Island Fading Lines
+	0x288EA, 0x288FC, 0x289E7, 0x288AA, // Caves Wooden Beams
+};
+
+const inline std::vector<int> alwaysDeathLinkPanels = {
+	0x09FCC, 0x09FCE, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2, // Same Solution Set
+	0x033EA, 0x01BE9, 0x01CD3, 0x01D3F, // Keep Pressure Plates
+};
+
+const inline std::set<int> movingMemoryPanels = {
+	0x00CDB, 0x0051F, 0x00524, 0x00CD4
+};
+
 const inline std::set<int> allEPs = {
 	0x0332B, 0x03367, 0x28B8A, 0x037B6, 0x037B2, 0x000F7, 0x3351D, 0x0053C
 	, 0x00771, 0x335C8, 0x335C9, 0x337F8, 0x037BB, 0x220E4, 0x220E5, 0x334B9
@@ -959,7 +993,7 @@ const inline std::map<int, std::string> precompletableEpToName = {
 	{ 0x035C9, "hub_windows"}, //Cargo
 };
 
-const inline std::map<int, std::vector<byte>> precompletableEpToPatternPointBytes = {
+const inline std::map<int, std::vector<uint8_t>> precompletableEpToPatternPointBytes = {
 	{
 		0x01848, {0xEE,0x17,0x00,0x00,0xDF,0x18,0x00,0x00,0xEE,0x34,0x03,0x00,0xFF,0x17,0x00,0x00}
 	}, //First Hallway
@@ -1417,33 +1451,5 @@ private:
 	float z2;
 };
 
-static RgbColor getColorByItemFlag(const __int64 flags) {
-	// Pick the appropriate color for this item based on its progression flags. Colors are loosely based on AP codes but somewhat
-	// paler to match the Witness aesthetic. See https://github.com/ArchipelagoMW/Archipelago/blob/main/NetUtils.py for details.
-
-	if (flags & APClient::ItemFlags::FLAG_ADVANCEMENT) {
-		return { 0.82f, 0.76f, 0.96f };
-	}
-	else if (flags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
-		// NOTE: "never exclude" here maps onto "useful" in the AP source.
-		return { 0.68f, 0.75f, 0.94f };
-	}
-	else if (flags & APClient::ItemFlags::FLAG_TRAP) {
-		return { 1.f, 0.7f, 0.67f };
-	}
-	else {
-		return { 0.81f, 1.f, 1.f };
-	}
-}
-
-static RgbColor getColorByItemIdOrFlag(const __int64 itemId, const __int64 flags) {
-	if (itemId >= 158000 && itemId < 160000) {
-		//TODO
-	}
-	return getColorByItemFlag(flags);
-}
-
-static RgbColor getColorForItem(const APClient::NetworkItem& item)
-{
-	return getColorByItemFlag(item.flags);
-}
+RgbColor getColorByItemFlag(const __int64 flags);
+RgbColor getColorByItemIdOrFlag(const __int64 itemId, const __int64 flags);
