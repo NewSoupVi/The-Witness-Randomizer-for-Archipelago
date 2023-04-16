@@ -1,12 +1,13 @@
 #include "APWatchdog.h"
 
+#include "Client/apclientpp/apclient.hpp"
+
 #include "../HudManager.h"
 #include "../Input.h"
 #include "../Memory.h"
 #include "../Panels.h"
 #include "../Quaternion.h"
 #include "../Special.h"
-#include "Client/apclientpp/apclient.hpp"
 #include "PanelLocker.h"
 #include "SkipSpecialCases.h"
 

@@ -58,6 +58,8 @@ protected:
     APDataPackageStore() {}
 
 public:
+    virtual ~APDataPackageStore() {}
+
     virtual bool load(const std::string& game, const std::string& checksum, json& data) = 0;
     virtual bool save(const std::string& game, const json& data) = 0;
 };
@@ -247,13 +249,13 @@ public:
             };
         }
 
-        constexpr bool operator<(const Version& other)
+        constexpr bool operator<(const Version& other) const
         {
             return (ma < other.ma) || (ma == other.ma && mi < other.mi) ||
                    (ma == other.ma && mi == other.mi && build < other.build);
         }
 
-        constexpr bool operator>=(const Version& other)
+        constexpr bool operator>=(const Version& other) const
         {
             return !(*this < other);
         }
@@ -275,6 +277,11 @@ public:
     void set_socket_connected_handler(std::function<void(void)> f)
     {
         _hOnSocketConnected = f;
+    }
+
+    void set_socket_error_handler(std::function<void(const std::string&)> f)
+    {
+        _hOnSocketError = f;
     }
 
     void set_socket_disconnected_handler(std::function<void(void)> f)
@@ -820,6 +827,28 @@ public:
         return _team;
     }
 
+    /// Get current hint points for the connect slot. This might wrongly return 0 for servers before merging #1548
+    int get_hint_points() const
+    {
+        return _hintPoints;
+    }
+
+    /// Get cost of a hint in points for the connect slot.
+    int get_hint_cost_points() const
+    {
+        if (!_hintCostPercent)
+            return 0;
+        if (_serverVersion >= Version{0, 3, 9})
+            return std::max(1, _hintCostPercent * _locationCount / 100);
+        return _hintCostPercent * _locationCount / 100;
+    }
+
+    /// Get cost of a hint in percent of total location count for the connected server.
+    int get_hint_cost_percent() const
+    {
+        return _hintCostPercent;
+    }
+
     bool is_data_package_valid() const
     {
         // returns true if cached texts are valid
@@ -862,6 +891,9 @@ public:
         _slot.clear();
         _team = -1;
         _slotnr = -1;
+        _locationCount = 0;
+        _hintCostPercent = 0;
+        _hintPoints = 0;
         _players.clear();
         delete _ws;
         _ws = nullptr;
@@ -938,12 +970,12 @@ private:
                 if (dump.size() > maxDumpLen-3) dump = dump.substr(0, maxDumpLen-3) + "...";
                 debug("< " + cmd + ": " + dump);
 #endif
-                // TODO: validate command schema to get a useful error message
                 if (cmd == "RoomInfo") {
                     _localConnectTime = std::chrono::steady_clock::now();
                     _serverConnectTime = command["time"].get<double>();
                     _serverVersion = Version::from_json(command["version"]);
                     _seed = command["seed_name"];
+                    _hintCostPercent = command.value("hint_cost", 0);
                     if (_state < State::ROOM_INFO) _state = State::ROOM_INFO;
                     if (_hOnRoomInfo) _hOnRoomInfo();
 
@@ -1050,6 +1082,8 @@ private:
                     _state = State::SLOT_CONNECTED;
                     _team = command["team"];
                     _slotnr = command["slot"];
+                    _hintPoints = command.value("hint_points", command["checked_locations"].size());
+                    _locationCount = command["missing_locations"].size() + command["checked_locations"].size();
                     _players.clear();
                     for (auto& player: command["players"]) {
                         _players.push_back({
@@ -1130,6 +1164,8 @@ private:
                         if (!checkedLocations.empty())
                             _hOnLocationChecked(checkedLocations);
                     }
+                    if (command["hint_points"].is_number_integer())
+                        _hintPoints = command["hint_points"];
                 }
                 else if (cmd == "DataPackage") {
                     auto data = _dataPackage;
@@ -1178,9 +1214,10 @@ private:
         }
     }
 
-    void onerror()
+    void onerror(const std::string& msg = "")
     {
-        debug("onerror()");
+        debug("onerror(" + msg + ")");
+        if (_hOnSocketError) _hOnSocketError(msg);
         // TODO: on desktop, we could check if the error was handle_read_http_response before switching to wss://
         //       and handle_transport_init before switching to ws://
         if (_tryWSS && _uri.rfind("ws://", 0) == 0) {
@@ -1208,7 +1245,11 @@ private:
                     [this]() { onopen(); },
                     [this]() { onclose(); },
                     [this](const std::string& s) { onmessage(s); },
+#if WSWRAP_VERSION >= 10200
+                    [this](const std::string& s) { onerror(s); }
+#else
                     [this]() { onerror(); }
+#endif
 #if WSWRAP_VERSION >= 10100
                     , _certStore
 #endif
@@ -1284,6 +1325,7 @@ private:
     bool _tryWSS = false;
 
     std::function<void(void)> _hOnSocketConnected = nullptr;
+    std::function<void(const std::string&)> _hOnSocketError = nullptr;
     std::function<void(void)> _hOnSocketDisconnected = nullptr;
     std::function<void(const json&)> _hOnSlotConnected = nullptr;
     std::function<void(void)> _hOnSlotDisconnected = nullptr;
@@ -1317,6 +1359,9 @@ private:
     double _serverConnectTime = 0;
     std::chrono::steady_clock::time_point _localConnectTime;
     Version _serverVersion = {0,0,0};
+    int _locationCount = 0;
+    int _hintCostPercent = 0;
+    int _hintPoints = 0;
     APDataPackageStore* _dataPackageStore;
 #ifndef AP_NO_DEFAULT_DATA_PACKAGE_STORE
     bool _dataPackageStoreAllocated = false;
