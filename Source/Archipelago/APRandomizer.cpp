@@ -20,7 +20,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	std::string uri = buildUri(server);
 
 	if (ap) ap->reset();
-	ap = new APClient("uuid", "The Witness", uri);
+	ap = new APClient("uuid", "The Witness", uri, "cacert-2023-01-10.pem");
 
 	try {	ap->set_data_package_from_file(DATAPACKAGE_CACHE);	}
 	catch (std::exception) { /* ignore */ }
