@@ -15,9 +15,17 @@ class HudManager;
 class PanelLocker;
 
 
+enum SpeedBoostFillSize
+{
+	Partial,
+	Full,
+	MaxFill
+};
+
+
 class APWatchdog : public Watchdog {
 public:
-	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, float smsf, bool dl);
+	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl);
 
 	int spentPuzzleSkips = 0;
 	int foundPuzzleSkips = 0;
@@ -27,8 +35,13 @@ public:
 	virtual void action();
 
 	void MarkLocationChecked(int locationId, bool collect);
-	void ApplyTemporarySpeedBoost();
-	void ApplyTemporarySlow();
+
+	void GrantSpeedBoostFill(SpeedBoostFillSize size);
+	void GrantSpeedBoostCapacity();
+	void TryTriggerSpeedBoost();
+
+	void TriggerSlownessTrap();
+	
 	void TriggerPowerSurge();
 	void ResetPowerSurge();
 
@@ -91,7 +104,17 @@ private:
 
 	std::set<double> deathLinkTimestamps;
 
-	const float baseSpeed = 2.0f;
+	const float defaultRunSpeed = 2.f;
+	const float boostedRunSpeed = 4.f;
+	const float slowedRunSpeed = 1.f;
+
+	float speedBoostTime = 0.f;
+	float slownessTrapTime = 0.f;
+	const float solveModeSpeedBoostDecayFactor = 0.f;
+
+	const int numSpeedChargesPerBoost = 5;
+	int currentSpeedCharges = 0;
+	int maxSpeedCharges = numSpeedChargesPerBoost;
 
 	bool laserRequirementMet = false;
 
@@ -103,9 +126,6 @@ private:
 	std::set<int> alreadyTriedUpdatingNormally;
 
 	int storageCheckCounter = 6;
-
-	float speedTime = 0.0f;
-	float solveModeSpeedFactor = 0.0f;
 
 	bool infiniteChallenge = false;
 	bool insideChallengeBoxRange = true;
@@ -162,7 +182,7 @@ private:
 
 	void CheckImportantCollisionCubes();
 
-	void SetStatusMessages();
+	void SetStatusMessages() const;
 
 	int GetActivePanel();
 	void WriteMovementSpeed(float currentSpeed);

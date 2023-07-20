@@ -18,10 +18,10 @@
 #include "PanelRestore.h"
 
 
-#define CHEAT_KEYS_ENABLED 0
+#define CHEAT_KEYS_ENABLED 1
 #define SKIP_HOLD_DURATION 1.f
 
-APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, float smsf, bool dl) : Watchdog(0.033f) {
+APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl) : Watchdog(0.033f) {
 	generator = std::make_shared<Generate>();
 	ap = client;
 	panelIdToLocationId = mapping;
@@ -38,12 +38,6 @@ APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPan
 	EPShuffle = ep;
 	obeliskHexToEPHexes = o;
 	entityToName = epn;
-	solveModeSpeedFactor = smsf;
-
-	speedTime = ReadPanelData<float>(0x3D9A7, VIDEO_STATUS_COLOR);
-	if (speedTime == 0.6999999881f) { // original value
-		speedTime = 0;
-	}
 
 	for (auto [key, value] : obeliskHexToEPHexes) {
 		obeliskHexToAmountOfEPs[key] = (int)value.size();
@@ -383,44 +377,68 @@ void APWatchdog::MarkLocationChecked(int locationId, bool collect)
 	if (panelIdToLocationId.count(panelId)) panelIdToLocationId.erase(panelId);
 }
 
-void APWatchdog::ApplyTemporarySpeedBoost() {
-	speedTime += 20.0f;
+void APWatchdog::GrantSpeedBoostFill(SpeedBoostFillSize size) {
+	if (currentSpeedCharges < maxSpeedCharges) {
+		switch (size) {
+		case SpeedBoostFillSize::Full:
+			currentSpeedCharges = std::min(maxSpeedCharges, currentSpeedCharges + numSpeedChargesPerBoost);
+			break;
+		case SpeedBoostFillSize::Partial:
+			currentSpeedCharges += 1;
+			break;
+		case SpeedBoostFillSize::MaxFill:
+			currentSpeedCharges = maxSpeedCharges;
+		}
+	}
 }
 
-void APWatchdog::ApplyTemporarySlow() {
-	speedTime -= 20.0f;
+void APWatchdog::GrantSpeedBoostCapacity() {
+	maxSpeedCharges += numSpeedChargesPerBoost;
 }
 
+void APWatchdog::TryTriggerSpeedBoost() {
+	if (speedBoostTime > 0.5f || slownessTrapTime > 0.f) {
+		return;
+	}
+	
+	if (currentSpeedCharges >= numSpeedChargesPerBoost) {
+		currentSpeedCharges -= numSpeedChargesPerBoost;
+		speedBoostTime = 20.f;
+
+		if (slownessTrapTime <= 0.f) {
+			WriteMovementSpeed(boostedRunSpeed);
+		}
+	}
+}
+
+void APWatchdog::TriggerSlownessTrap() {
+	slownessTrapTime = 20.f;
+	WriteMovementSpeed(slowedRunSpeed);
+}
 
 void APWatchdog::HandleMovementSpeed(float deltaSeconds) {
-	if (speedTime != 0) {
-		// Move the speed time closer to zero.
-		float factor = 1;
-
-		InteractionState interactionState = InputWatchdog::get()->getInteractionState();
-		if (interactionState != InteractionState::Walking) factor = solveModeSpeedFactor;
-
-		speedTime = std::max(std::abs(speedTime) - deltaSeconds * factor, 0.f) * (std::signbit(speedTime) ? -1 : 1);
-
-		if (speedTime > 0) {
-			WriteMovementSpeed(2.0f * baseSpeed);
-		}
-		else if (speedTime < 0) {
-			WriteMovementSpeed(0.6f * baseSpeed);
-		}
-		else {
-			WriteMovementSpeed(baseSpeed);
+	if (slownessTrapTime > 0.f) {
+		slownessTrapTime -= deltaSeconds;
+		if (slownessTrapTime <= 0.f) {
+			WriteMovementSpeed(speedBoostTime > 0.f ? boostedRunSpeed : defaultRunSpeed);
 		}
 	}
-	else {
-		WriteMovementSpeed(baseSpeed);
-	}
+	else if (speedBoostTime > 0.f) {
+		switch (InputWatchdog::get()->getInteractionState()) {
+		case InteractionState::Focusing:
+		case InteractionState::Solving:
+			speedBoostTime -= speedBoostTime * solveModeSpeedBoostDecayFactor;
+			break;
+		case InteractionState::Menu:
+			break;
+		default:
+			speedBoostTime -= deltaSeconds;
+		}
 
-	if (speedTime == 0.6999999881) { // avoid original value
-		speedTime = 0.699;
+		if (speedBoostTime <= 0.f) {
+			WriteMovementSpeed(defaultRunSpeed);
+		}
 	}
-
-	WritePanelData<float>(0x3D9A7, VIDEO_STATUS_COLOR, { speedTime });
 }
 
 void APWatchdog::TriggerPowerSurge() {
@@ -922,19 +940,38 @@ void APWatchdog::HandleKeyTaps() {
 				hudManager->queueBannerMessage("Failed to bind [" + keyName + "] to " + bindName + ".", { 1.f, 0.25f, 0.25f }, 2.f);
 			}
 		}
+		else if (interactionState == InteractionState::Walking && tappedButton == inputWatchdog->getCustomKeybind(CustomKey::SPEED_BOOST)) {
+			TryTriggerSpeedBoost();
+		}
 		else {
 			switch (tappedButton) {
 #if CHEAT_KEYS_ENABLED
-			case InputButton::KEY_MINUS:
-				hudManager->queueNotification("Cheat: adding Slowness.", getColorByItemFlag(APClient::ItemFlags::FLAG_TRAP));
-				ApplyTemporarySlow();
+			case InputButton::KEY_NUMPAD_1:
+				hudManager->queueNotification("Cheat: Granting partial speed boost fill.", getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+				GrantSpeedBoostFill(SpeedBoostFillSize::Partial);
 				break;
-			case InputButton::KEY_EQUALS:
-				hudManager->queueNotification("Cheat: adding Speed Boost.", getColorByItemFlag(APClient::ItemFlags::FLAG_NEVER_EXCLUDE));
-				ApplyTemporarySpeedBoost();
+			case InputButton::KEY_NUMPAD_2:
+				hudManager->queueNotification("Cheat: Granting speed boost fill.", getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+				GrantSpeedBoostFill(SpeedBoostFillSize::Full);
 				break;
-			case InputButton::KEY_0:
-				hudManager->queueNotification("Cheat: adding Puzzle Skip.", getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT));
+			case InputButton::KEY_NUMPAD_3:
+				hudManager->queueNotification("Cheat: Granting maximum boost fill.", getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+				GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill);
+				break;
+			case InputButton::KEY_NUMPAD_PLUS:
+				hudManager->queueNotification("Cheat: Granting boost capacity increase.", getColorByItemFlag(APClient::ItemFlags::FLAG_NEVER_EXCLUDE));
+				GrantSpeedBoostCapacity();
+				break;
+			case InputButton::KEY_NUMPAD_7:
+				hudManager->queueNotification("Cheat: Triggering Slowness trap.", getColorByItemFlag(APClient::ItemFlags::FLAG_TRAP));
+				TriggerSlownessTrap();
+				break;
+			case InputButton::KEY_NUMPAD_8:
+				hudManager->queueNotification("Cheat: Triggering Power Surge trap.", getColorByItemFlag(APClient::ItemFlags::FLAG_TRAP));
+				TriggerPowerSurge();
+				break;
+			case InputButton::KEY_NUMPAD_0:
+				hudManager->queueNotification("Cheat: adding Puzzle Skip.", getColorByItemFlag(APClient::ItemFlags::FLAG_NEVER_EXCLUDE));
 				if (spentPuzzleSkips > foundPuzzleSkips) {
 					// We've spent more skips than we've found, almost certainly because we cheated ourselves some in a
 					//   previous app launch. Reset to zero before adding a new one.
@@ -943,15 +980,10 @@ void APWatchdog::HandleKeyTaps() {
 
 				AddPuzzleSkip();
 				break;
-			case InputButton::KEY_NUMPAD_0:
-				for (int spamCount = 0; spamCount < 100; spamCount++) {
-					std::stringstream spamString;
-					spamString << "spam message " << spamCount + 1 << "/100";
-					hudManager->queueNotification(spamString.str());
-				}
-				hudManager->queueNotification("sorry (not sorry)");
 #endif
-			};
+			default:
+				break;
+			}
 		}
 	}
 }
@@ -1488,21 +1520,35 @@ void APWatchdog::QueueReceivedItem(std::vector<__int64> item) {
 	queuedItems.push_back(item);
 }
 
-void APWatchdog::SetStatusMessages() {
+void APWatchdog::SetStatusMessages() const {
 	const InputWatchdog* inputWatchdog = InputWatchdog::get();
-	InteractionState interactionState = inputWatchdog->getInteractionState();
+	const InteractionState interactionState = inputWatchdog->getInteractionState();
 	if (interactionState == InteractionState::Walking) {
-		int speedTimeInt = (int)std::ceil(std::abs(speedTime));
+		std::string speedString;
+		if (slownessTrapTime > 0.f) {
+			const int seconds = (int)std::ceil(std::abs(slownessTrapTime));
+			speedString = "Slowed for " + std::to_string(seconds) + " seconds.\n";
+		}
+		else if (speedBoostTime > 0.f) {
+			const int seconds = (int)std::ceil(std::abs(speedBoostTime));
+			speedString = "Speed boosted for " + std::to_string(seconds) + " seconds.\n";
+		}
 
-		if (speedTime > 0) {
-			hudManager->setWalkStatusMessage("Speed Boost active for " + std::to_string(speedTimeInt) + " seconds.");
+		const int numFullBoosts = currentSpeedCharges / numSpeedChargesPerBoost;
+		const int boostCapacity = maxSpeedCharges / numSpeedChargesPerBoost;
+
+		speedString +=
+			"[" + InputWatchdog::getNameForInputButton(inputWatchdog->getCustomKeybind(CustomKey::SPEED_BOOST)) + "] ";
+		speedString += "Speed Boost (" + std::to_string(numFullBoosts) + "/" + std::to_string(boostCapacity);
+
+		if (numFullBoosts != boostCapacity) {
+			const int percentToNext = (currentSpeedCharges % numSpeedChargesPerBoost) * 100 / numSpeedChargesPerBoost;
+			speedString += ", " + std::to_string(percentToNext) + "% to next";
 		}
-		else if (speedTime < 0) {
-			hudManager->setWalkStatusMessage("Slowness active for " + std::to_string(speedTimeInt) + " seconds.");
-		}
-		else {
-			hudManager->clearWalkStatusMessage();
-		}
+		
+		speedString += ")";
+
+		hudManager->setWalkStatusMessage(speedString);
 	}
 	else if (interactionState == InteractionState::Focusing || interactionState == InteractionState::Solving) {
 		// Always show the number of puzzle skips available while in focus mode.

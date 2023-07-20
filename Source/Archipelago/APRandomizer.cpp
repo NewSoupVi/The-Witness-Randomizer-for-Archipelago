@@ -77,14 +77,16 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 				progressiveItems[item.item].erase(progressiveItems[item.item].begin());
 			}
 
-			bool unlockLater = false;
 
-			if (item.item != ITEM_TEMP_SPEED_BOOST && item.item != ITEM_TEMP_SPEED_REDUCTION && item.item != ITEM_POWER_SURGE) {
+			static const std::list<int64_t> lateUnlocks =
+				{ ITEM_SPEED_BOOST, ITEM_PARTIAL_SPEED_BOOST, ITEM_MAX_SPEED_BOOST,
+				  ITEM_TEMP_SPEED_REDUCTION, ITEM_POWER_SURGE };
+
+			
+			const bool unlockLater = std::find(lateUnlocks.begin(), lateUnlocks.end(), item.item) != lateUnlocks.end();
+			if (!unlockLater) {
 				unlockItem(realitem);
 				panelLocker->UpdatePuzzleLocks(state, realitem);
-			}
-			else {
-				unlockLater = true;
 			}
 
 			if (itemIdToDoorSet.count(realitem)) {
@@ -386,30 +388,36 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 
 void APRandomizer::unlockItem(int item) {
 	switch (item) {
-		case ITEM_DOTS:									state.unlockedDots = true;							break;
-		case ITEM_COLORED_DOTS:							state.unlockedColoredDots = true;				break;
-		case ITEM_FULL_DOTS:									state.unlockedFullDots = true;							break;
-		case ITEM_SOUND_DOTS:							state.unlockedSoundDots = true;					break;
-		case ITEM_SYMMETRY:								state.unlockedSymmetry = true;					break;
-		case ITEM_TRIANGLES:								state.unlockedTriangles = true;					break;
-		case ITEM_ERASOR:									state.unlockedErasers = true;						break;
-		case ITEM_TETRIS:									state.unlockedTetris = true;						break;
-		case ITEM_TETRIS_ROTATED:						state.unlockedTetrisRotated = true;				break;
-		case ITEM_TETRIS_NEGATIVE:						state.unlockedTetrisNegative = true;			break;
-		case ITEM_STARS:									state.unlockedStars = true;						break;
-		case ITEM_STARS_WITH_OTHER_SYMBOL:			state.unlockedStarsWithOtherSimbol = true;	break;
-		case ITEM_B_W_SQUARES:							state.unlockedStones = true;						break;
-		case ITEM_COLORED_SQUARES:						state.unlockedColoredStones = true;				break;
-		case ITEM_SQUARES: state.unlockedStones = state.unlockedColoredStones = true;				break;
+		// Puzzle symbols
+		case ITEM_DOTS: state.unlockedDots = true; break;
+		case ITEM_COLORED_DOTS: state.unlockedColoredDots = true; break;
+		case ITEM_FULL_DOTS: state.unlockedFullDots = true; break;
+		case ITEM_SOUND_DOTS: state.unlockedSoundDots = true; break;
+		case ITEM_SYMMETRY: state.unlockedSymmetry = true; break;
+		case ITEM_TRIANGLES: state.unlockedTriangles = true; break;
+		case ITEM_ERASOR: state.unlockedErasers = true; break;
+		case ITEM_TETRIS: state.unlockedTetris = true; break;
+		case ITEM_TETRIS_ROTATED: state.unlockedTetrisRotated = true; break;
+		case ITEM_TETRIS_NEGATIVE: state.unlockedTetrisNegative = true; break;
+		case ITEM_STARS: state.unlockedStars = true; break;
+		case ITEM_STARS_WITH_OTHER_SYMBOL: state.unlockedStarsWithOtherSimbol = true; break;
+		case ITEM_B_W_SQUARES: state.unlockedStones = true; break;
+		case ITEM_COLORED_SQUARES: state.unlockedColoredStones = true; break;
+		case ITEM_SQUARES: state.unlockedStones = state.unlockedColoredStones = true; break;
 		case ITEM_ARROWS: state.unlockedArrows = true; break;
 
-		//Powerups
-		case ITEM_TEMP_SPEED_BOOST:					async->ApplyTemporarySpeedBoost();				break;
-		case ITEM_PUZZLE_SKIP:							async->AddPuzzleSkip(); break;
+		// Powerups
+		case ITEM_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Full); break;
+		case ITEM_PARTIAL_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial); break;
+		case ITEM_MAX_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill); break;
+		case ITEM_PUZZLE_SKIP: async->AddPuzzleSkip(); break;
+		case ITEM_BOOST_CAPACITY: async->GrantSpeedBoostCapacity(); break;
 
-		//Traps
-		case ITEM_POWER_SURGE:							async->TriggerPowerSurge();						break;
-		case ITEM_TEMP_SPEED_REDUCTION:				async->ApplyTemporarySlow();						break;
+		// Traps
+		case ITEM_POWER_SURGE: async->TriggerPowerSurge(); break;
+		case ITEM_TEMP_SPEED_REDUCTION: async->TriggerSlownessTrap(); break;
+
+		default: break;
 	}
 }
 
@@ -544,7 +552,7 @@ void APRandomizer::Init() {
 }
 
 void APRandomizer::GenerateNormal() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, DeathLink);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)
@@ -552,7 +560,7 @@ void APRandomizer::GenerateNormal() {
 }
 
 void APRandomizer::GenerateHard() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, DeathLink);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink);
 	SeverDoors();
 
 	//Mess with Town targets

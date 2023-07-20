@@ -26,8 +26,6 @@ class APRandomizer {
 
 		int mostRecentItemId = -1;
 
-		float solveModeSpeedFactor = 0.0f;
-
 		bool connected = false;
 		bool randomizationFinished = false;
 

@@ -14,6 +14,7 @@
 // Custom keys for randomizer-specific functionality.
 enum class CustomKey : int {
 	SKIP_PUZZLE,
+	SPEED_BOOST,
 	COUNT
 };
 

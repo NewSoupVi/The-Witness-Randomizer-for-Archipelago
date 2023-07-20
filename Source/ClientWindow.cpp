@@ -78,6 +78,7 @@ void ClientWindow::saveSettings()
 
 	InputWatchdog* input = InputWatchdog::get();
 	data["key_skipPuzzle"] = static_cast<int>(input->getCustomKeybind(CustomKey::SKIP_PUZZLE));
+	data["key_speedBoost"] = static_cast<int>(input->getCustomKeybind(CustomKey::SPEED_BOOST));
 
 	data["apSlotName"] = getSetting(ClientStringSetting::ApSlotName);
 
@@ -107,8 +108,11 @@ void ClientWindow::loadSettings()
 			InputWatchdog* input = InputWatchdog::get();
 			input->loadCustomKeybind(CustomKey::SKIP_PUZZLE,
 				data.contains("key_skipPuzzle") ? static_cast<InputButton>(data["key_skipPuzzle"].get<int>()) : InputButton::KEY_Q);
+			input->loadCustomKeybind(CustomKey::SPEED_BOOST,
+				data.contains("key_speedBoost") ? static_cast<InputButton>(data["key_speedBoost"].get<int>()) : InputButton::KEY_TAB);
 
 			refreshKeybind(CustomKey::SKIP_PUZZLE);
+			refreshKeybind(CustomKey::SPEED_BOOST);
 		}
 	}
 
@@ -602,6 +606,11 @@ LRESULT CALLBACK ClientWindow::handleWndProc(HWND hwnd, UINT message, WPARAM wPa
 		}
 // Keybindings.
 		case IDC_BUTTON_KEYBIND + static_cast<int>(CustomKey::SKIP_PUZZLE) : {
+			CustomKey key = static_cast<CustomKey>(LOWORD(wParam) - IDC_BUTTON_KEYBIND);
+			handleKeybind(key);
+			break;
+		}
+		case IDC_BUTTON_KEYBIND + static_cast<int>(CustomKey::SPEED_BOOST) : {
 			CustomKey key = static_cast<CustomKey>(LOWORD(wParam) - IDC_BUTTON_KEYBIND);
 			handleKeybind(key);
 			break;

@@ -27,6 +27,7 @@ InputWatchdog::InputWatchdog() : Watchdog(0.016f) {
 
 	// TEMP: Set default keybinds.
 	customKeybinds[CustomKey::SKIP_PUZZLE] = InputButton::KEY_T;
+	customKeybinds[CustomKey::SKIP_PUZZLE] = InputButton::KEY_TAB;
 }
 
 void InputWatchdog::action() {
