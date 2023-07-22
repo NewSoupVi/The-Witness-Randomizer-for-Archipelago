@@ -411,6 +411,10 @@ void APWatchdog::TryTriggerSpeedBoost() {
 	}
 }
 
+int APWatchdog::GetPartialBoostFillAmount() const {
+	return 100 / numSpeedChargesPerBoost;
+}
+
 void APWatchdog::TriggerSlownessTrap() {
 	slownessTrapTime = 20.f;
 	WriteMovementSpeed(slowedRunSpeed);

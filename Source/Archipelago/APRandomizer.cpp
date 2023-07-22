@@ -307,8 +307,6 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		int localPlayerId = ap->get_player_number();
 		
 		if (jsonArgs.type == "ItemSend") {
-
-			
 			std::string itemName = ap->get_item_name(jsonArgs.item->item);
 			if (jsonArgs.item->player == localPlayerId) {
 				// The item was sent from the local player's world. Update the corresponding panel's color.
@@ -320,31 +318,99 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 					async->SetPanelItemTypeColor(matchingPanel->first, jsonArgs.item->flags);
 				}
 
-				if (!collectedPlayers.count(*jsonArgs.receiving)) {
-					if (*jsonArgs.receiving == localPlayerId) {
-						// The player found one of their own items.
-						async->getHudManager()->queueNotification("Found " + itemName + ".",
-							getColorByItemFlag(jsonArgs.item->flags));
+				if (*jsonArgs.receiving == localPlayerId) {
+					if (!collectedPlayers.count(localPlayerId)) {
+						// Found one of our own items. If it's a speed item, grant the corresponding amount of energy,
+						//   and if it's not, grant a small fill and note that in the message.
+						switch (jsonArgs.item->item) {
+							case ITEM_PARTIAL_SPEED_BOOST:
+								async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial);
+								async->getHudManager()->queueNotification(
+									"+" + std::to_string(async->GetPartialBoostFillAmount()) + "% boost energy.",
+									getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+								break;
+							case ITEM_SPEED_BOOST:
+								async->GrantSpeedBoostFill(SpeedBoostFillSize::Full);
+								async->getHudManager()->queueNotification(
+									"Found a whole boost charge. +100% boost energy.",
+									getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+								break;
+							case ITEM_MAX_SPEED_BOOST:
+								async->GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill);
+								async->getHudManager()->queueNotification(
+									"Found a fill for all boost charges.",
+									getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+								break;
+							default:
+								async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial);
+								async->getHudManager()->queueNotification("Found " + itemName + ". +" +
+									std::to_string(async->GetPartialBoostFillAmount()) + "%be.",
+									getColorByItemFlag(jsonArgs.item->flags));
+								break;
+						}
 					}
-					else if (!releasedPlayers.count(localPlayerId)) {
-						// The player found someone else's item. Only show these items if they're not part of either a
-						//   collect or release operation.
-						std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
-						async->getHudManager()->queueNotification("Sent " + itemName + " to " + remotePlayerName + ".",
-							getColorByItemFlag(jsonArgs.item->flags));
+					else {
+						// Collected one of our own items. If it's a speed item, grant the corresponding amount of
+						//   energy directly.
+						switch (jsonArgs.item->item) {
+							case ITEM_PARTIAL_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial); break;
+							case ITEM_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Full); break;
+							case ITEM_MAX_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill); break;
+							default: break;
+						}
 					}
+				}
+				else if (!collectedPlayers.count(*jsonArgs.receiving) && !releasedPlayers.count(localPlayerId)) {
+					// The player found someone else's item.
+					std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
+					async->getHudManager()->queueNotification("Sent " + itemName + " to " + remotePlayerName + ". +" +
+						std::to_string(async->GetPartialBoostFillAmount()) + "%be.",
+						getColorByItemFlag(jsonArgs.item->flags));
+
+					// When sending an item, always grant a partial boost energy fill.
+					async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial);
 				}
 			}
 			else if (*jsonArgs.receiving == localPlayerId) {
 				// This item was sent to the local player from a remote player.
 				std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
 				if (!collectedPlayers.count(localPlayerId)) {
-					async->getHudManager()->queueNotification("Received " + itemName + " from " + remotePlayerName + ".",
-						getColorByItemFlag(jsonArgs.item->flags));
+					// Received one of our own items.
+					switch (jsonArgs.item->item) {
+						case ITEM_PARTIAL_SPEED_BOOST:
+							async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial);
+							async->getHudManager()->queueNotification(
+								"Received a little boost energy from" + remotePlayerName + ". +" +
+								std::to_string(async->GetPartialBoostFillAmount()) + "% boost energy.",
+								getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+							break;
+						case ITEM_SPEED_BOOST:
+							async->GrantSpeedBoostFill(SpeedBoostFillSize::Full);
+							async->getHudManager()->queueNotification(
+								"Received a whole boost charge from " + remotePlayerName + ". +100% boost energy.",
+								getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+							break;
+						case ITEM_MAX_SPEED_BOOST:
+							async->GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill);
+							async->getHudManager()->queueNotification(
+								"Received a fill for all boost charges from " + remotePlayerName + ".",
+								getColorByItemFlag(APClient::ItemFlags::FLAG_NONE));
+							break;
+						default:
+							async->getHudManager()->queueNotification(
+								"Received " + itemName + " from " + remotePlayerName + ".",
+								getColorByItemFlag(jsonArgs.item->flags));
+							break;
+					}
 				}
 				else {
-					async->getHudManager()->queueNotification("Collected " + itemName + " from " + remotePlayerName + ".",
-						getColorByItemFlag(jsonArgs.item->flags));
+					// When collecting items from other players, don't show messages.
+					switch (jsonArgs.item->item) {
+						case ITEM_PARTIAL_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial); break;
+						case ITEM_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Full); break;
+						case ITEM_MAX_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill); break;
+						default: break;
+					}
 				}
 			}
 		}
@@ -452,10 +518,7 @@ void APRandomizer::unlockItem(int item) {
 		case ITEM_SQUARES: state.unlockedStones = state.unlockedColoredStones = true; break;
 		case ITEM_ARROWS: state.unlockedArrows = true; break;
 
-		// Powerups
-		case ITEM_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Full); break;
-		case ITEM_PARTIAL_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::Partial); break;
-		case ITEM_MAX_SPEED_BOOST: async->GrantSpeedBoostFill(SpeedBoostFillSize::MaxFill); break;
+		// Powerups. Note that speed boost items are handled on JSON message receipt, not here.
 		case ITEM_PUZZLE_SKIP: async->AddPuzzleSkip(); break;
 		case ITEM_BOOST_CAPACITY: async->GrantSpeedBoostCapacity(); break;
 

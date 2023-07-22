@@ -40,6 +40,8 @@ public:
 	void GrantSpeedBoostCapacity();
 	void TryTriggerSpeedBoost();
 
+	int GetPartialBoostFillAmount() const;
+
 	void TriggerSlownessTrap();
 	
 	void TriggerPowerSurge();
