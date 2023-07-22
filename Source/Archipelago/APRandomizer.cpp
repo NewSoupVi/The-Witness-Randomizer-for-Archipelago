@@ -108,8 +108,6 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			while (async->processingItemMessages) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			}
-
-			async->QueueReceivedItem({ item.item, advancement, realitem });
 		}
 	});
 
@@ -305,60 +303,108 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 	});
 
-	ap->set_print_json_handler([&](const APClient::PrintJSONArgs jsonArgs) {
-		if (!jsonArgs.receiving || !jsonArgs.item || jsonArgs.item->player != ap->get_player_number())
-			return;
+	ap->set_print_json_handler([&](const APClient::PrintJSONArgs& jsonArgs) {
+		int localPlayerId = ap->get_player_number();
+		
+		if (jsonArgs.type == "ItemSend") {
 
-		const APClient::NetworkItem item = *jsonArgs.item;
-		const int receiver = *jsonArgs.receiving;
-		const auto msg = jsonArgs.data;
+			
+			std::string itemName = ap->get_item_name(jsonArgs.item->item);
+			if (jsonArgs.item->player == localPlayerId) {
+				// The item was sent from the local player's world. Update the corresponding panel's color.
+				const auto matchingPanel = std::find_if(std::begin(panelIdToLocationId), std::end(panelIdToLocationId),
+				                                        [&](const std::pair<int, int>& pair) {
+					                                        return pair.second == jsonArgs.item->location;
+				                                        });
+				if (matchingPanel != panelIdToLocationId.end()) {
+					async->SetPanelItemTypeColor(matchingPanel->first, jsonArgs.item->flags);
+				}
 
-		while (!randomizationFinished) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		}
-
-		int counter = 10; //Try for 10 seconds to see if something else than "Unknown" shows up
-		while (ap->get_item_name(item.item) == "Unknown" && counter > 0) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-			counter--;
-		}
-
-		auto findResult = std::find_if(std::begin(panelIdToLocationId), std::end(panelIdToLocationId), [&](const std::pair<int, int>& pair) {
-			return pair.second == item.location;
-		});
-
-		if (findResult == std::end(panelIdToLocationId)) return;
-
-		bool receiving = receiver == ap->get_player_number();
-
-		std::string player = ap->get_player_alias(receiver);
-		std::string itemName = ap->get_item_name(item.item);
-		std::string locationName = ap->get_location_name(item.location);
-
-		bool hint = jsonArgs.type == "Hint";
-		bool found = (jsonArgs.found) ? *jsonArgs.found : false;
-
-		if (hint) {
-			if (async->seenAudioMessages.count(item.location)) return;
-
-			std::string isFor = "";
-			if (!receiving) isFor = " for " + player;
-
-			if(!found) async->getHudManager()->queueNotification("Hint: " + itemName + isFor + " is on " + locationName + ".");
-		}
-		else {
-			int location = item.location;
-
-			bool panelSolved = false;
-			int panelId = panelIdToLocationIdReverse[location];
-
-			if (panelIdToLocationIdReverse.count(location) && async->CheckPanelHasBeenSolved(panelId)) {
-				async->getHudManager()->queueNotification("(Collect) Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
+				if (!collectedPlayers.count(*jsonArgs.receiving)) {
+					if (*jsonArgs.receiving == localPlayerId) {
+						// The player found one of their own items.
+						async->getHudManager()->queueNotification("Found " + itemName + ".",
+							getColorByItemFlag(jsonArgs.item->flags));
+					}
+					else if (!releasedPlayers.count(localPlayerId)) {
+						// The player found someone else's item. Only show these items if they're not part of either a
+						//   collect or release operation.
+						std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
+						async->getHudManager()->queueNotification("Sent " + itemName + " to " + remotePlayerName + ".",
+							getColorByItemFlag(jsonArgs.item->flags));
+					}
+				}
 			}
-			else
-			{
-				async->SetItemRewardColor(findResult->first, item.flags);
-				if(!receiving) async->getHudManager()->queueNotification("Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
+			else if (*jsonArgs.receiving == localPlayerId) {
+				// This item was sent to the local player from a remote player.
+				std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
+				if (!collectedPlayers.count(localPlayerId)) {
+					async->getHudManager()->queueNotification("Received " + itemName + " from " + remotePlayerName + ".",
+						getColorByItemFlag(jsonArgs.item->flags));
+				}
+				else {
+					async->getHudManager()->queueNotification("Collected " + itemName + " from " + remotePlayerName + ".",
+						getColorByItemFlag(jsonArgs.item->flags));
+				}
+			}
+		}
+		else if (jsonArgs.type == "Hint") {
+			// Don't show hints that we triggered via audio log, have already shown, or are no longer relevant.
+			if (async->seenAudioHintLocations.count(jsonArgs.item->location) ||
+				*jsonArgs.found ||
+				std::find_if(seenHints.begin(), seenHints.end(), [&jsonArgs](const std::pair<int,int>& seenHint) {
+					return seenHint.first == jsonArgs.item->player && seenHint.second == jsonArgs.item->location;
+				}) != seenHints.end()) return;
+
+			seenHints.emplace_back(jsonArgs.item->player, jsonArgs.item->location);
+			
+			std::string itemName = ap->get_item_name(jsonArgs.item->item);
+			std::string locationName = ap->get_location_name(jsonArgs.item->location);
+			
+			if (*jsonArgs.receiving == localPlayerId) {
+				if (jsonArgs.item->player == localPlayerId) {
+					async->getHudManager()->queueNotification(
+						"Hint: Your " + itemName + " is at " + locationName + ".");
+				}
+				else {
+					std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
+					async->getHudManager()->queueNotification(
+						"Hint: Your " + itemName + " is at " + locationName + " in " + remotePlayerName + "'s world.");
+				}
+			}
+			else if (jsonArgs.item->player == localPlayerId) {
+				std::string remotePlayerName = ap->get_player_alias(jsonArgs.item->player);
+				async->getHudManager()->queueNotification(
+					"Hint: " + remotePlayerName + "'s " + itemName + " is at " + locationName + " in your world.");
+			}
+		}
+		else if (jsonArgs.type == "Goal") {
+			if (*jsonArgs.slot == localPlayerId) {
+				async->getHudManager()->queueNotification("You have reached your goal.");
+			}
+			else if (*jsonArgs.team == ap->get_team_number()) {
+				std::string remotePlayerName = ap->get_player_alias(*jsonArgs.slot);
+				async->getHudManager()->queueNotification(remotePlayerName + " has reached their goal.");
+			}
+		}
+		else if (jsonArgs.type == "Collect") {
+			collectedPlayers.insert(*jsonArgs.slot);
+			if (*jsonArgs.slot == localPlayerId) {
+				async->getHudManager()->queueNotification("Collected all of your items.");
+			}
+			else if (*jsonArgs.team == ap->get_team_number()) {
+				std::string remotePlayerName = ap->get_player_alias(*jsonArgs.slot);
+				async->getHudManager()->queueNotification(remotePlayerName + " collected their items from your world.");
+			}
+		}
+		else if (jsonArgs.type == "Release") {
+			releasedPlayers.insert(*jsonArgs.slot);
+			if (*jsonArgs.slot == localPlayerId) {
+				async->getHudManager()->queueNotification("Released remaining items in your world to their owners.");
+			}
+			else if (*jsonArgs.team == ap->get_team_number()) {
+				std::string remotePlayerName = ap->get_player_alias(*jsonArgs.slot);
+				async->getHudManager()->queueNotification(remotePlayerName + " has released your items.");
 			}
 		}
 	});

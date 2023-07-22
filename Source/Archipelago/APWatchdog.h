@@ -56,7 +56,7 @@ public:
 
 	void DoubleDoorTargetHack(int id);
 
-	void SetItemRewardColor(const int& id, const int& itemFlags);
+	void SetPanelItemTypeColor(const int& id, const unsigned int& itemFlags);
 
 	bool CheckPanelHasBeenSolved(int panelId);
 
@@ -75,7 +75,7 @@ public:
 
 	HudManager* getHudManager() const { return hudManager.get(); }
 
-	std::set<int> seenAudioMessages;
+	std::set<int64_t> seenAudioHintLocations;
 
 private:
 	APClient* ap;

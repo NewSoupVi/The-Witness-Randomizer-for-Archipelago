@@ -22,7 +22,7 @@ class APRandomizer {
 		bool EPShuffle = false;
 		int MountainLasers = 7;
 		int ChallengeLasers = 11;
-		bool DeathLink;
+		bool DeathLink = false;
 
 		int mostRecentItemId = -1;
 
@@ -58,9 +58,13 @@ class APRandomizer {
 		std::set<int> precompletedLocations;
 		std::map<int, std::string> entityToName;
 
-		class APClient* ap = NULL;
-		class APWatchdog* async;
-		class PanelLocker* panelLocker;
+		std::vector<std::pair<int, int>> seenHints;
+		std::set<int> collectedPlayers;
+		std::set<int> releasedPlayers;
+
+		class APClient* ap = nullptr;
+		class APWatchdog* async = nullptr;
+		class PanelLocker* panelLocker = nullptr;
 
 		APState state = APState();
 

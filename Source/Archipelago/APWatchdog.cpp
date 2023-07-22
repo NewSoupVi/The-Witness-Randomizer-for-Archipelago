@@ -1117,11 +1117,11 @@ void APWatchdog::AudioLogPlaying(float deltaSeconds) {
 
 			ap->Set("WitnessAudioLog" + std::to_string(pNO) + "-" + std::to_string(logId), NULL, false, operations);
 
-			int locationId = audioLogMessages[logId].second;
+			int64_t locationId = audioLogMessages[logId].second;
 
-			if (locationId != -1 && !seenAudioMessages.count(locationId)) {
+			if (locationId != -1 && !seenAudioHintLocations.count(locationId)) {
 				ap->LocationScouts({ locationId }, 2);
-				seenAudioMessages.insert(locationId);
+				seenAudioHintLocations.insert(locationId);
 			}
 
 			break;
@@ -1370,7 +1370,7 @@ bool APWatchdog::CheckPanelHasBeenSolved(int panelId) {
 	return panelIdToLocationId.count(panelId);
 }
 
-void APWatchdog::SetItemRewardColor(const int& id, const int& itemFlags) {
+void APWatchdog::SetPanelItemTypeColor(const int& id, const unsigned int& itemFlags) {
 	if (!actuallyEveryPanel.count(id)) return;
 
 	Color backgroundColor;

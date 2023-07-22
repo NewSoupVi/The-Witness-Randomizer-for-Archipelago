@@ -220,6 +220,8 @@ public:
         int* receiving = nullptr;
         NetworkItem* item = nullptr;
         bool* found = nullptr;
+        int* team = nullptr;
+        int* slot = nullptr;
         int* countdown = nullptr;
     };
 
@@ -337,6 +339,8 @@ public:
             int receiving;
             NetworkItem item;
             bool found;
+            int team;
+            int slot;
             int countdown;
 
             for (const auto& part: command["data"]) {
@@ -373,6 +377,18 @@ public:
             if (it != command.end()) {
                 found = *it;
                 args.found = &found;
+            }
+
+            it = command.find("team");
+            if (it != command.end()) {
+                team = *it;
+                args.team = &team;
+            }
+
+            it = command.find("slot");
+            if (it != command.end()) {
+                slot = *it;
+                args.slot = &slot;
             }
 
             it = command.find("countdown");
