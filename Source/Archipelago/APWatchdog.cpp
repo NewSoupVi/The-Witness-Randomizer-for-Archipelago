@@ -39,6 +39,12 @@ APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPan
 	obeliskHexToEPHexes = o;
 	entityToName = epn;
 
+	currentSpeedCharges = ReadPanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR);
+	if (currentSpeedCharges == 1060320051) {
+		// This value is at its default, indicating a new save.
+		currentSpeedCharges = 0;
+	}
+
 	for (auto [key, value] : obeliskHexToEPHexes) {
 		obeliskHexToAmountOfEPs[key] = (int)value.size();
 	}
@@ -389,6 +395,8 @@ void APWatchdog::GrantSpeedBoostFill(SpeedBoostFillSize size) {
 		case SpeedBoostFillSize::MaxFill:
 			currentSpeedCharges = maxSpeedCharges;
 		}
+
+		WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
 	}
 }
 
@@ -403,6 +411,8 @@ void APWatchdog::TryTriggerSpeedBoost() {
 	
 	if (currentSpeedCharges >= numSpeedChargesPerBoost) {
 		currentSpeedCharges -= numSpeedChargesPerBoost;
+		WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
+		
 		speedBoostTime = 20.f;
 
 		if (slownessTrapTime <= 0.f) {

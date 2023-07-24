@@ -27,9 +27,6 @@ class APWatchdog : public Watchdog {
 public:
 	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl);
 
-	int spentPuzzleSkips = 0;
-	int foundPuzzleSkips = 0;
-
 	APState* state;
 
 	virtual void action();
@@ -114,9 +111,13 @@ private:
 	float slownessTrapTime = 0.f;
 	const float solveModeSpeedBoostDecayFactor = 0.f;
 
-	const int numSpeedChargesPerBoost = 5;
+	int foundPuzzleSkips = 0;
+	int spentPuzzleSkips = 0;
+
+	const int numSpeedChargesPerBoost = 8;
 	int currentSpeedCharges = 0;
 	int maxSpeedCharges = numSpeedChargesPerBoost;
+	int earnedSpeedCharges = 0;
 
 	bool laserRequirementMet = false;
 
