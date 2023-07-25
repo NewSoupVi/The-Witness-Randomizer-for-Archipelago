@@ -148,6 +148,7 @@ void ClientWindow::loadSettings()
 		input->loadCustomKeybind(CustomKey::SPEED_BOOST, InputButton::KEY_TAB);
 		
 		refreshKeybind(CustomKey::SKIP_PUZZLE);
+		refreshKeybind(CustomKey::SPEED_BOOST);
 	}
 
 #if _DEBUG
