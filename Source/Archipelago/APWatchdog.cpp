@@ -114,6 +114,28 @@ void APWatchdog::action() {
 	hudManager->update(frameDuration);
 }
 
+void APWatchdog::SetPlaytestParameters(const nlohmann::json& slotData) {
+	if (slotData.contains("playtest_boost_duration")) {
+		speedBoostDuration = slotData["playtest_boost_duration"];
+	}
+
+	if (slotData.contains("playtest_num_charges_per_full_boost")) {
+		numSpeedChargesPerBoost = slotData["playtest_num_charges_per_full_boost"];
+	}
+
+	if (slotData.contains("playtest_num_charges_per_small_fill_base")) {
+		numSpeedChargesPerSmallFillBase = slotData["playtest_num_charges_per_small_fill_base"];
+	}
+
+	if (slotData.contains("playtest_num_charges_per_small_fill_scaling")) {
+		numSpeedChargesPerSmallFillScaling = slotData["playtest_num_charges_per_small_fill_scaling"];
+	}
+
+	if (slotData.contains("playtest_num_starting_boost_capacity")) {
+		baseBoostCapacity = slotData["playtest_num_starting_boost_capacity"];
+	}
+}
+
 void APWatchdog::HandleInteractionState() {
 	InteractionState interactionState = InputWatchdog::get()->getInteractionState();
 	bool stateChanged = InputWatchdog::get()->consumeInteractionStateChange();
@@ -382,17 +404,23 @@ void APWatchdog::MarkLocationChecked(int locationId, bool collect)
 }
 
 void APWatchdog::GrantSpeedBoostFill(SpeedBoostFillSize size) {
+	const int currentBoostCapacity = baseBoostCapacity + foundBoostCapacity;
+	const int currentChargeCapacity = currentBoostCapacity * numSpeedChargesPerBoost;
+	
 	switch (size) {
 	case SpeedBoostFillSize::Full:
-		currentSpeedCharges = std::min(maxSpeedCharges, currentSpeedCharges + numSpeedChargesPerBoost);
+		currentSpeedCharges = std::min(currentChargeCapacity, currentSpeedCharges + numSpeedChargesPerBoost);
 		hudManager->queueEnergyFillMessage(100);
 		break;
-	case SpeedBoostFillSize::Partial:
-		currentSpeedCharges = std::min(maxSpeedCharges, currentSpeedCharges + 1);
-		hudManager->queueEnergyFillMessage(GetPartialBoostFillAmount());
-		break;
+	case SpeedBoostFillSize::Partial: {
+			const int grantedCharges = numSpeedChargesPerSmallFillBase +
+				currentBoostCapacity * numSpeedChargesPerSmallFillScaling;
+			currentSpeedCharges = std::min(currentChargeCapacity, currentSpeedCharges + grantedCharges);
+			hudManager->queueEnergyFillMessage(grantedCharges * 100 / numSpeedChargesPerBoost);
+			break;
+		}
 	case SpeedBoostFillSize::MaxFill:
-		currentSpeedCharges = maxSpeedCharges;
+		currentSpeedCharges = currentChargeCapacity;
 		hudManager->queueEnergyFillMessage(-1);
 	}
 
@@ -400,7 +428,7 @@ void APWatchdog::GrantSpeedBoostFill(SpeedBoostFillSize size) {
 }
 
 void APWatchdog::GrantSpeedBoostCapacity() {
-	maxSpeedCharges += numSpeedChargesPerBoost;
+	foundBoostCapacity += 1;
 }
 
 void APWatchdog::TryTriggerSpeedBoost() {
@@ -412,16 +440,12 @@ void APWatchdog::TryTriggerSpeedBoost() {
 		currentSpeedCharges -= numSpeedChargesPerBoost;
 		WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
 		
-		speedBoostTime = 20.f;
+		speedBoostTime = speedBoostDuration;
 
 		if (slownessTrapTime <= 0.f) {
 			WriteMovementSpeed(boostedRunSpeed);
 		}
 	}
-}
-
-int APWatchdog::GetPartialBoostFillAmount() const {
-	return 100 / numSpeedChargesPerBoost;
 }
 
 void APWatchdog::TriggerSlownessTrap() {
@@ -1486,7 +1510,7 @@ void APWatchdog::SetStatusMessages() const {
 		}
 
 		const int numFullBoosts = currentSpeedCharges / numSpeedChargesPerBoost;
-		const int boostCapacity = maxSpeedCharges / numSpeedChargesPerBoost;
+		const int boostCapacity = baseBoostCapacity + foundBoostCapacity;
 
 		speedString +=
 			"[" + InputWatchdog::getNameForInputButton(inputWatchdog->getCustomKeybind(CustomKey::SPEED_BOOST)) + "] ";

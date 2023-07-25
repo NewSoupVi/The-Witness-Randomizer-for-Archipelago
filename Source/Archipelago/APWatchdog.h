@@ -31,13 +31,13 @@ public:
 
 	virtual void action();
 
+	void SetPlaytestParameters(const nlohmann::json& slotData);
+
 	void MarkLocationChecked(int locationId, bool collect);
 
 	void GrantSpeedBoostFill(SpeedBoostFillSize size);
 	void GrantSpeedBoostCapacity();
 	void TryTriggerSpeedBoost();
-
-	int GetPartialBoostFillAmount() const;
 
 	void TriggerSlownessTrap();
 	
@@ -107,11 +107,14 @@ private:
 
 	int foundPuzzleSkips = 0;
 	int spentPuzzleSkips = 0;
-
-	const int numSpeedChargesPerBoost = 8;
+	
+	int numSpeedChargesPerBoost = 8;
+	int numSpeedChargesPerSmallFillBase = 1;
+	int numSpeedChargesPerSmallFillScaling = 0;
 	int currentSpeedCharges = 0;
-	int maxSpeedCharges = numSpeedChargesPerBoost;
-	int earnedSpeedCharges = 0;
+	int baseBoostCapacity = 1;
+	int foundBoostCapacity = 0;
+	float speedBoostDuration = 20.f;
 
 	bool laserRequirementMet = false;
 

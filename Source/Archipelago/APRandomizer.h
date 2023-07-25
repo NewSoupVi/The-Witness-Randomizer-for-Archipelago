@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "nlohmann/json.hpp"
+
 class APRandomizer {
 	public:
 		APRandomizer();
@@ -65,6 +67,8 @@ class APRandomizer {
 		class APClient* ap = nullptr;
 		class APWatchdog* async = nullptr;
 		class PanelLocker* panelLocker = nullptr;
+	
+		nlohmann::json cachedSlotData;
 
 		APState state = APState();
 

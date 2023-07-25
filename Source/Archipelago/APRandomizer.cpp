@@ -246,9 +246,9 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			ap->ConnectUpdate(false, 7, true, newTags);
 		}
 
-
 		connected = true;
 		hasConnectionResult = true;
+		cachedSlotData = slotData;
 	});
 
 	ap->set_slot_refused_handler([&](const std::list<std::string>& errors) {
@@ -639,6 +639,7 @@ void APRandomizer::Init() {
 
 void APRandomizer::GenerateNormal() {
 	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink);
+	async->SetPlaytestParameters(cachedSlotData);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)
@@ -647,6 +648,7 @@ void APRandomizer::GenerateNormal() {
 
 void APRandomizer::GenerateHard() {
 	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink);
+	async->SetPlaytestParameters(cachedSlotData);
 	SeverDoors();
 
 	//Mess with Town targets
