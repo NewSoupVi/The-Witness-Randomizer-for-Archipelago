@@ -288,6 +288,7 @@ public:
 	uint64_t boatSpeed3;
 	uint64_t boatSpeed2;
 	uint64_t boatSpeed1;
+	uint64_t boatTurnAccel;
 	uint64_t relativeBoatSpeed4Address;
 	uint64_t relativeBoatSpeed3Address;
 	uint64_t relativeBoatSpeed2Address;
@@ -308,6 +309,7 @@ public:
 	uint64_t cursorB;
 	uint64_t localisation;
 	uint64_t the_witness_string;
+	uint64_t gameLoop3CallsInARow;
 
 	std::vector<int> ACTIVEPANELOFFSETS;
 	int ACCELERATION;

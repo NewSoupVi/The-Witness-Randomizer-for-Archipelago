@@ -40,7 +40,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 
 		for (const auto& locationId : locations)
-			async->MarkLocationChecked(locationId, this->Collect);
+			async->MarkLocationChecked(locationId);
 	});
 
 	ap->set_slot_disconnected_handler([&]() {
@@ -127,7 +127,6 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			state.unlockedDots = true;
 			state.unlockedErasers = true;
 			state.unlockedFullDots = true;
-			state.unlockedInvisibleDots = true;
 			state.unlockedSoundDots = true;
 			state.unlockedStars = true;
 			state.unlockedStarsWithOtherSimbol = true;
@@ -287,15 +286,15 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 
 	ap->set_retrieved_handler([&](const std::map <std::string, nlohmann::json> response) {
 		for (auto [key, value] : response) {
-			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, Collect);
-			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, Collect);
+			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, SyncProgress);
+			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, SyncProgress);
 		}
 	});
 
 	ap->set_set_reply_handler([&](const std::string key, const nlohmann::json value, nlohmann::json original_value) {
 		if (value != original_value) {
-			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, Collect);
-			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, Collect);
+			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, SyncProgress);
+			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, SyncProgress);
 		}
 	});
 
@@ -533,9 +532,7 @@ void APRandomizer::PostGeneration() {
 				}
 			}
 			else if (actuallyEveryPanel.count(checkID)) {
-				panelLocker->PermanentlyUnlockPuzzle(checkID);
-				Special::SkipPanel(checkID, "Excluded", false);
-				memory->WritePanelData<float>(checkID, POWER, { 1.0f, 1.0f });
+				async->SkipPanel(checkID, "Excluded", false);
 			}
 		}
 	}
@@ -606,9 +603,42 @@ void APRandomizer::PostGeneration() {
 	randomizationFinished = true;
 	memory->showMsg = false;
 
+	for (int panel : disabledPanels) {
+		async->SkipPanel(panel, "Disabled", false);
+	}
+
 	async->getHudManager()->queueBannerMessage("Randomized!");
 
 	async->start();
+}
+
+void APRandomizer::HighContrastMode() {
+	Memory* memory = Memory::get();
+
+	std::vector<float> swampRedOuter = memory->ReadPanelData<float>(0x00982, OUTER_BACKGROUND, 4);
+	std::vector<float> swampRedInner = memory->ReadPanelData<float>(0x00982, BACKGROUND_REGION_COLOR, 4);
+	std::vector<float> pathColor = memory->ReadPanelData<float>(0x00982, PATH_COLOR, 4);
+	std::vector<float> activeColor = memory->ReadPanelData<float>(0x00982, ACTIVE_COLOR, 4);
+
+	for (int id : notThatBadSwampPanels) {
+		memory->WritePanelData<float>(id, OUTER_BACKGROUND, swampRedOuter);
+		memory->WritePanelData<float>(id, BACKGROUND_REGION_COLOR, swampRedInner);
+		memory->WritePanelData<float>(id, PATH_COLOR, pathColor);
+		memory->WritePanelData<float>(id, ACTIVE_COLOR, activeColor);
+	}
+
+	for (int i = 0; i < 3; i++) {
+		swampRedOuter[i] *= 0.75f;
+		swampRedInner[i] *= 0.75f;
+		pathColor[i] *= 0.75f;
+	}
+
+	for (int id : swampLowContrastPanels) {
+		memory->WritePanelData<float>(id, OUTER_BACKGROUND, swampRedOuter);
+		memory->WritePanelData<float>(id, BACKGROUND_REGION_COLOR, swampRedInner);
+		memory->WritePanelData<float>(id, PATH_COLOR, pathColor);
+		memory->WritePanelData<float>(id, ACTIVE_COLOR, activeColor);
+	}
 }
 
 void APRandomizer::setPuzzleLocks() {
@@ -638,17 +668,15 @@ void APRandomizer::Init() {
 }
 
 void APRandomizer::GenerateNormal() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink);
-	async->SetPlaytestParameters(cachedSlotData);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink, Collect, DisabledPuzzlesBehavior, disabledPanels);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)
-		panelLocker->DisableNonRandomizedPuzzles(disabledPanels, doorsActuallyInTheItemPool);
+		panelLocker->DisableNonRandomizedPuzzles(doorsActuallyInTheItemPool);
 }
 
 void APRandomizer::GenerateHard() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink);
-	async->SetPlaytestParameters(cachedSlotData);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, audioLogMessages, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, DeathLink, Collect, DisabledPuzzlesBehavior, disabledPanels);
 	SeverDoors();
 
 	//Mess with Town targets
@@ -667,7 +695,7 @@ void APRandomizer::GenerateHard() {
 	Memory::get()->PowerNext(0x03629, 0x36);
 
 	if (DisableNonRandomizedPuzzles)
-		panelLocker->DisableNonRandomizedPuzzles(disabledPanels, doorsActuallyInTheItemPool);
+		panelLocker->DisableNonRandomizedPuzzles(doorsActuallyInTheItemPool);
 }
 
 void APRandomizer::PreventSnipes()

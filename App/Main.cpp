@@ -27,6 +27,7 @@
 #include "Converty.h"
 #include "Archipelago/APRandomizer.h"
 #include <Archipelago/APGameData.h>
+#include <Archipelago/ASMPayloadManager.h>
 
 
 #define IDC_RANDOMIZE 0x401
@@ -184,8 +185,10 @@ void Main::randomize() {
 	std::string apPassword = clientWindow->getSetting(ClientStringSetting::ApPassword);
 
 	randomizer->seedIsRNG = false;
-	apRandomizer->Collect = clientWindow->getSetting(ClientToggleSetting::Collect);
-	
+	apRandomizer->SyncProgress = clientWindow->getSetting(ClientToggleSetting::SyncProgress);
+	apRandomizer->Collect = clientWindow->getSetting(ClientDropdownSetting::Collect);
+	apRandomizer->DisabledPuzzlesBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledPuzzles);
+
 	clientWindow->setStatusMessage("Connecting to Archipelago...");
 	if (!apRandomizer->Connect(apAddress, apSlotName, apPassword)) {
 		clientWindow->setStatusMessage("");
@@ -237,6 +240,8 @@ void Main::randomize() {
 	randomizer->colorblind = clientWindow->getSetting(ClientToggleSetting::ColorblindMode);
 	randomizer->doubleMode = false;
 
+	ASMPayloadManager::create();
+
 	clientWindow->setStatusMessage("Restoring vanilla puzzles...");
 	apRandomizer->Init();
 
@@ -255,6 +260,10 @@ void Main::randomize() {
 
 	memory->WritePanelData(0x00064, BACKGROUND_REGION_COLOR + 12, seed);
 	memory->WritePanelData(0x00182, BACKGROUND_REGION_COLOR + 12, puzzleRando);
+
+	if (clientWindow->getSetting(ClientToggleSetting::HighContrast)) {
+		apRandomizer->HighContrastMode();
+	}
 
 	apRandomizer->PostGeneration();
 

@@ -15,7 +15,9 @@ class APRandomizer {
 
 		int Seed = 0;
 		int FinalPanel = 0;
-		bool Collect = false;
+		bool SyncProgress = false;
+		std::string Collect = "Unchanged";
+		std::string DisabledPuzzlesBehavior = "Prevent Solve";
 
 		int PuzzleRandomization = 2;
 		bool UnlockSymbols = false;
@@ -36,6 +38,8 @@ class APRandomizer {
 
 		void GenerateNormal();
 		void GenerateHard();
+
+		void HighContrastMode();
 
 		void SkipPuzzle();
 

@@ -25,7 +25,7 @@ enum SpeedBoostFillSize
 
 class APWatchdog : public Watchdog {
 public:
-	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl);
+	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl, std::string col, std::string dis, std::set<int> disP);
 
 	APState* state;
 
@@ -33,7 +33,7 @@ public:
 
 	void SetPlaytestParameters(const nlohmann::json& slotData);
 
-	void MarkLocationChecked(int locationId, bool collect);
+	void MarkLocationChecked(int locationId);
 
 	void GrantSpeedBoostFill(SpeedBoostFillSize size);
 	void GrantSpeedBoostCapacity();
@@ -52,6 +52,11 @@ public:
 
 	void UnlockDoor(int id);
 	void SeverDoor(int id);
+
+	void SkipPanel(int id, std::string reason, bool kickOut) {
+		SkipPanel(id, reason, kickOut, 0);
+	}
+	void SkipPanel(int id, std::string reason, bool kickOut, int cost);
 
 	void DoubleDoorTargetHack(int id);
 
@@ -90,6 +95,10 @@ private:
 	bool EPShuffle = false;
 	int PuzzleRandomization = 0;
 
+	std::string Collect = "Unchanged";
+	std::string DisabledPuzzlesBehavior = "Prevent Solve";
+	std::set<int> DisabledEntities;
+
 	bool FirstEverLocationCheckDone = false;
 
 	bool hasPowerSurge = false;
@@ -121,7 +130,6 @@ private:
 	std::set<int> disableCollisionList;
 
 	std::set<int> severedDoorsList;
-	std::map<int,int> collisionsToRefresh;
 	std::map<int, std::vector<float>> collisionPositions;
 	std::set<int> alreadyTriedUpdatingNormally;
 
@@ -145,8 +153,6 @@ private:
 	void DisableCollisions();
 
 	void AudioLogPlaying(float deltaSeconds);
-
-	void RefreshDoorCollisions();
 
 	void CheckSolvedPanels();
 	void HandleMovementSpeed(float deltaSeconds);
@@ -194,6 +200,8 @@ private:
 	std::map<std::string, int> EPIDsToEPs;
 	std::list<std::string> EPIDs;
 	std::map<int, bool> EPStates;
+
+	std::set<int> PuzzlesSkippedThisGame = {};
 
 	int currentAudioLog = -1;
 	float currentAudioLogDuration = 0.f;
