@@ -131,7 +131,8 @@ void ClientWindow::loadSettings()
 	auto defaultAddress = "localhost:38281";
 	auto defaultUser = "Witness";
 #else
-	auto defaultAddress = "archipelago.gg:";
+	//auto defaultAddress = "archipelago.gg:";
+	auto defaultAddress = "blastron.us.to:";
 	auto defaultUser = "";
 #endif
 
