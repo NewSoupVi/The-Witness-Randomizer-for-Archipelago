@@ -18,7 +18,7 @@
 #include "PanelRestore.h"
 
 
-#define CHEAT_KEYS_ENABLED 0
+#define CHEAT_KEYS_ENABLED 1
 #define SKIP_HOLD_DURATION 1.f
 
 APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl) : Watchdog(0.033f) {
@@ -83,8 +83,6 @@ void APWatchdog::action() {
 	halfSecondCountdown -= frameDuration;
 	if (halfSecondCountdown <= 0) {
 		halfSecondCountdown += 0.5f;
-
-		QueueItemMessages();
 
 		CheckSolvedPanels();
 
@@ -384,20 +382,21 @@ void APWatchdog::MarkLocationChecked(int locationId, bool collect)
 }
 
 void APWatchdog::GrantSpeedBoostFill(SpeedBoostFillSize size) {
-	if (currentSpeedCharges < maxSpeedCharges) {
-		switch (size) {
-		case SpeedBoostFillSize::Full:
-			currentSpeedCharges = std::min(maxSpeedCharges, currentSpeedCharges + numSpeedChargesPerBoost);
-			break;
-		case SpeedBoostFillSize::Partial:
-			currentSpeedCharges += 1;
-			break;
-		case SpeedBoostFillSize::MaxFill:
-			currentSpeedCharges = maxSpeedCharges;
-		}
-
-		WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
+	switch (size) {
+	case SpeedBoostFillSize::Full:
+		currentSpeedCharges = std::min(maxSpeedCharges, currentSpeedCharges + numSpeedChargesPerBoost);
+		hudManager->queueEnergyFillMessage(100);
+		break;
+	case SpeedBoostFillSize::Partial:
+		currentSpeedCharges = std::min(maxSpeedCharges, currentSpeedCharges + 1);
+		hudManager->queueEnergyFillMessage(GetPartialBoostFillAmount());
+		break;
+	case SpeedBoostFillSize::MaxFill:
+		currentSpeedCharges = maxSpeedCharges;
+		hudManager->queueEnergyFillMessage(-1);
 	}
+
+	WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
 }
 
 void APWatchdog::GrantSpeedBoostCapacity() {
@@ -1470,68 +1469,6 @@ void APWatchdog::CheckEPSkips() {
 		Special::SkipPanel(panel, "Skipped", false);
 		WritePanelData<__int32>(panel, VIDEO_STATUS_COLOR, { PUZZLE_SKIPPED }); // Cost == 0
 	}
-}
-
-void APWatchdog::QueueItemMessages() {
-	if (newItemsJustIn) {
-		newItemsJustIn = false;
-		return;
-	}
-
-	processingItemMessages = true;
-
-	std::map<std::string, int> itemCounts;
-	std::map<std::string, RgbColor> itemColors;
-	std::vector<std::string> receivedItems;
-
-	for (auto it = queuedItems.begin(); it != queuedItems.end();) {
-		__int64 item = it->at(0);
-		__int64 flags = it->at(1);
-		__int64 realitem = it->at(2);
-
-		if (ap->get_item_name(realitem) == "Unknown" || ap->get_item_name(item) == "Unknown") {
-			it++;
-			continue;
-		}
-
-		std::string name = ap->get_item_name(item);
-
-		if (realitem != item && realitem > 0) {
-			name += " (" + ap->get_item_name(realitem) + ")";
-		}
-
-		// Track the quantity of this item received in this batch.
-		if (itemCounts.find(name) == itemCounts.end()) {
-			itemCounts[name] = 1;
-			receivedItems.emplace_back(name);
-		}
-		else {
-			itemCounts[name]++;
-		}
-
-		// Assign a color to the item.
-		itemColors[name] = getColorByItemFlag(flags);
-
-		it = queuedItems.erase(it);
-	}
-
-	for (std::string name : receivedItems) {
-		// If we received more than one of an item in this batch, add the quantity to the output string.
-		std::string count = "";
-		if (itemCounts[name] > 1) {
-			count = " (x" + std::to_string(itemCounts[name]) + ")";
-		}
-
-		hudManager->queueNotification("Received " + name + count + ".", itemColors[name]);
-	}
-
-	processingItemMessages = false;
-}
-
-void APWatchdog::QueueReceivedItem(std::vector<__int64> item) {
-	newItemsJustIn = true;
-
-	queuedItems.push_back(item);
 }
 
 void APWatchdog::SetStatusMessages() const {

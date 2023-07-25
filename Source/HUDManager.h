@@ -3,6 +3,7 @@
 #include <array>
 #include <string>
 #include <queue>
+#include <set>
 
 #include "DataTypes.h"
 
@@ -47,6 +48,15 @@ public:
 	void setDebugText(const std::string& text);
 	void clearDebugText() { setDebugText(std::string()); }
 
+	// Queues a notification specific to the given item. If notifications for multiple of the same item are queued,
+	//   these notifications will be batched accordingly.
+	void queueItemMessage(const std::string& itemName, const std::string& otherPlayer, const int64_t& itemFlags,
+					      bool sending, int quantity = 1);
+
+	// Queues a notification for receiving energy. If multiple energy notifications are queued, combines them. Pass -1
+	//   to indicate that a max energy item was received.
+	void queueEnergyFillMessage(int addedPercentage);
+
 private:
 
 	void updateBannerMessages(float deltaSeconds);
@@ -80,6 +90,23 @@ private:
 	std::queue<Notification> queuedNotifications;
 	std::vector<Notification> activeNotifications;
 	float timeToNextNotification = 0.f;
+
+	struct ItemMessage
+	{
+		std::string itemName;
+		std::string otherPlayer;
+		int quantity;
+		bool sending;
+		int64_t itemFlags;
+	};
+
+	struct ItemMessageComparator
+	{
+		bool operator() (const ItemMessage& lhs, const ItemMessage& rhs) const;
+	};
+
+	std::set<ItemMessage, ItemMessageComparator> queuedItemMessages;
+	int queuedEnergy = 0;
 
 	std::array<std::string, static_cast<int>(InfoMessageCategory::COUNT)> informationalMessages;
 	std::string currentInformationalMessage;

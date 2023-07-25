@@ -5,6 +5,8 @@
 #include "Memory.h"
 #include <cassert>
 
+#include "Archipelago/APGameData.h"
+
 
 #define STRING_DATA_SIZE 0x80
 
@@ -107,6 +109,44 @@ void HudManager::setDebugText(const std::string& text) {
 	}
 }
 
+void HudManager::queueItemMessage(const std::string& itemName, const std::string& otherPlayer,
+                                  const int64_t& itemFlags, bool sending, int quantity) {
+	const auto equalityCheck = [&](const ItemMessage& message) {
+		return message.itemName == itemName && message.otherPlayer == otherPlayer && message.sending == sending;
+	}; 
+	
+	if (const auto existingItem = std::find_if(queuedItemMessages.begin(), queuedItemMessages.end(), equalityCheck);
+	                                           existingItem != queuedItemMessages.end()) {
+		ItemMessage updatedMessage = *existingItem;
+		queuedItemMessages.erase(existingItem);
+
+		updatedMessage.quantity += quantity;
+		queuedItemMessages.insert(updatedMessage);
+	}
+	else {
+		ItemMessage newMessage;
+		newMessage.itemName = itemName;
+		newMessage.otherPlayer = otherPlayer;
+		newMessage.quantity = quantity;
+		newMessage.sending = sending;
+		newMessage.itemFlags = itemFlags;
+
+		queuedItemMessages.insert(newMessage);
+	}
+}
+
+void HudManager::queueEnergyFillMessage(int addedPercentage) {
+	if (queuedEnergy == -1) {
+		return;
+	}
+	else if (addedPercentage == -1) {
+		queuedEnergy = -1;
+	}
+	else {
+		queuedEnergy += addedPercentage;
+	}
+}
+
 void HudManager::updateBannerMessages(float deltaSeconds) {
 	// If we're currently displaying a banner, decrement remaining message time and, if time still remains, return.
 	if (bannerTimeRemaining > 0) {
@@ -130,7 +170,7 @@ void HudManager::updateBannerMessages(float deltaSeconds) {
 void HudManager::updateNotifications(float deltaSeconds) {
 	int seenNotifications = 0;
 
-	std::vector<Notification>::iterator iterator = activeNotifications.begin();
+	auto iterator = activeNotifications.begin();
 	while (iterator != activeNotifications.end()) {
 		// Fade notifications out more quickly if there are a lot of them.
 		seenNotifications++;
@@ -163,13 +203,46 @@ void HudManager::updateNotifications(float deltaSeconds) {
 
 	timeToNextNotification -= deltaSeconds;
 	if (timeToNextNotification <= 0) {
-		if (queuedNotifications.size() > 0) {
+		if (!queuedNotifications.empty()) {
 			const Notification& notification = queuedNotifications.front();
 			activeNotifications.insert(activeNotifications.begin(), notification);
 			queuedNotifications.pop();
 
 			timeToNextNotification = TIME_BETWEEN_NOTIFICATIONS;
 			hudTextDirty = true;
+		}
+		else if (!queuedItemMessages.empty()) {
+			const ItemMessage& itemMessage = *queuedItemMessages.begin();
+			std::string text;
+			
+			const std::string quantityText = itemMessage.quantity > 1 ? " x" + std::to_string(itemMessage.quantity) : "";
+
+			if (itemMessage.otherPlayer.empty()) {
+				text = "Found " + itemMessage.itemName + quantityText + ".";
+			}
+			else if (itemMessage.sending) {
+				text = "Sent " + itemMessage.itemName + quantityText + " to " + itemMessage.otherPlayer + ".";
+			}
+			else {
+				text = "Received " + itemMessage.itemName + quantityText + " from " + itemMessage.otherPlayer + ".";
+			}
+			
+			const Notification notification(text, getColorByItemFlag(itemMessage.itemFlags));
+			activeNotifications.insert(activeNotifications.begin(), notification);
+			
+			queuedItemMessages.erase(queuedItemMessages.begin());
+			timeToNextNotification = TIME_BETWEEN_NOTIFICATIONS;
+			hudTextDirty = true;
+		}
+		else if (queuedEnergy > 0) {
+			const Notification notification("+" + std::to_string(queuedEnergy) + "% energy.", RgbColor());
+			queuedEnergy = 0;
+			activeNotifications.insert(activeNotifications.begin(), notification);
+		}
+		else if (queuedEnergy == -1) {
+			const Notification notification("Energy capacity filled to maximum.", RgbColor());
+			queuedEnergy = 0;
+			activeNotifications.insert(activeNotifications.begin(), notification);
 		}
 	}
 }
@@ -235,6 +308,19 @@ std::vector<std::string> HudManager::separateLines(std::string input, int maxLen
 	}
 
 	return wrappedLines;
+}
+
+bool HudManager::ItemMessageComparator::operator()(const ItemMessage& lhs, const ItemMessage& rhs) const {
+	if (lhs.sending != rhs.sending) {
+		// Show sending messages after receiving messages.
+		return rhs.sending;
+	}
+
+	if (const int itemComparison = compareItemTypes(lhs.itemFlags, rhs.itemFlags); itemComparison != 0) {
+		return itemComparison > 0;
+	}
+	
+	return lhs.itemName.compare(rhs.itemName) < 0;
 }
 
 uint32_t HudManager::findSubtitleFunction() {

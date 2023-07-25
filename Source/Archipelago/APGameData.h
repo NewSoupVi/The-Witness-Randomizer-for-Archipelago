@@ -1456,5 +1456,8 @@ private:
 	float z2;
 };
 
-RgbColor getColorByItemFlag(const __int64 flags);
-RgbColor getColorByItemIdOrFlag(const __int64 itemId, const __int64 flags);
+RgbColor getColorByItemFlag(const int64_t& flags);
+RgbColor getColorByItemIdOrFlag(const int64_t& itemId, const int64_t& flags);
+
+// Compares item types. Returns 1 if lhs should come before rhs, -1 if rhs should come first, and 0 if they're equal.
+int compareItemTypes(const int64_t& lhs, const int64_t& rhs);

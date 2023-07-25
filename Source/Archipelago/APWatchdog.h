@@ -66,12 +66,6 @@ public:
 
 	void ProcessDeathLink(double time, std::string cause, std::string source);
 
-
-	bool processingItemMessages = false;
-	bool newItemsJustIn = false;
-
-	void QueueReceivedItem(std::vector<__int64> item);
-
 	HudManager* getHudManager() const { return hudManager.get(); }
 
 	std::set<int64_t> seenAudioHintLocations;
@@ -144,8 +138,6 @@ private:
 
 	void CheckDeathLink();
 	void SendDeathLink(int panelId);
-
-	void QueueItemMessages();
 
 	void DisableCollisions();
 
