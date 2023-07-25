@@ -14,7 +14,7 @@ using json = nlohmann::json;
 
 ClientWindow* ClientWindow::_singleton = nullptr;
 
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2
 
 #define CLIENT_WINDOW_WIDTH 600
 #define CLIENT_MENU_CLASS_NAME L"WitnessRandomizer"
@@ -91,6 +91,7 @@ void ClientWindow::saveSettings()
 void ClientWindow::loadSettings()
 {
 	std::ifstream inputStream = std::ifstream("WRPGconfig.json");
+	bool loadedSettings = false;
 	if (inputStream.good()) {
 
 		json data;
@@ -107,13 +108,29 @@ void ClientWindow::loadSettings()
 			// Load keybinds.
 			InputWatchdog* input = InputWatchdog::get();
 			input->loadCustomKeybind(CustomKey::SKIP_PUZZLE,
-				data.contains("key_skipPuzzle") ? static_cast<InputButton>(data["key_skipPuzzle"].get<int>()) : InputButton::KEY_Q);
+				data.contains("key_skipPuzzle") ? static_cast<InputButton>(data["key_skipPuzzle"].get<int>()) : InputButton::KEY_T);
 			input->loadCustomKeybind(CustomKey::SPEED_BOOST,
 				data.contains("key_speedBoost") ? static_cast<InputButton>(data["key_speedBoost"].get<int>()) : InputButton::KEY_TAB);
 
 			refreshKeybind(CustomKey::SKIP_PUZZLE);
 			refreshKeybind(CustomKey::SPEED_BOOST);
+			
+			loadedSettings = true;
 		}
+
+		refreshKeybind(CustomKey::SKIP_PUZZLE);
+	}
+
+	if (!loadedSettings) {
+		// Set defaults.
+		setSetting(ClientToggleSetting::ChallengeTimer, false);
+		setSetting(ClientToggleSetting::Collect, true);
+		setSetting(ClientToggleSetting::ColorblindMode, false);
+
+		InputWatchdog* input = InputWatchdog::get();
+		input->loadCustomKeybind(CustomKey::SKIP_PUZZLE, InputButton::KEY_T);
+		
+		refreshKeybind(CustomKey::SKIP_PUZZLE);
 	}
 
 #if _DEBUG
