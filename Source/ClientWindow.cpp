@@ -135,11 +135,17 @@ void ClientWindow::loadSettings()
 	if (!loadedSettings) {
 		// Set defaults.
 		setSetting(ClientToggleSetting::ChallengeTimer, false);
-		//setSetting(ClientToggleSetting::Collect, true);  TEMP disable while merging two branches in
+
+		setSetting(ClientToggleSetting::SyncProgress, false);
+		setSetting(ClientToggleSetting::HighContrast, false);
+
+		setSetting(ClientDropdownSetting::Collect, "Unchanged");
+		setSetting(ClientDropdownSetting::DisabledPuzzles, "Prevent Solve");
 		setSetting(ClientToggleSetting::ColorblindMode, false);
 
 		InputWatchdog* input = InputWatchdog::get();
 		input->loadCustomKeybind(CustomKey::SKIP_PUZZLE, InputButton::KEY_T);
+		input->loadCustomKeybind(CustomKey::SPEED_BOOST, InputButton::KEY_TAB);
 		
 		refreshKeybind(CustomKey::SKIP_PUZZLE);
 	}
