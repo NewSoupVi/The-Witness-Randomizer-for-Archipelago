@@ -7,7 +7,7 @@
 #define MINOR 2
 #define PATCH 0
 
-#define VERSION_STR     "PLAYTEST 7/25/2023"
+#define VERSION_STR     "PLAYTEST v1.0a"
 #define VERSION			MAJOR, MINOR, PATCH
 
 #define AP_VERSION_STR	"0.4.2 PLAYTEST v1"
