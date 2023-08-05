@@ -33,6 +33,9 @@
 #define CABLE_COLOR_G 0x15C
 #define CABLE_COLOR_B 0x160
 
+#define DOOR_OPEN_T 0x1D0
+#define DOOR_OPEN_T_TARGET 0x1D4
+
 #define DOOR_OPEN 0x1E4
 #define DOOR_OPEN_RATE 0xE0
 
@@ -644,7 +647,7 @@ inline std::map<int, std::string> laserNames = {
 	{0x17C65, "Monastery"},
 };
 
-const inline int AllPuzzles[]{
+const inline int LockablePuzzles[]{
 		0x01983, 0x01987, //Peekaboos
 
 		0x00293, 0x00295, 0x002C2, 0x0A3B5, 0x0A3B2, 0x03629, // Tutorial
@@ -748,6 +751,7 @@ const inline int AllPuzzles[]{
 		0x0A182, // Treehouse Door 3
 		0x2700B, // Treehouse Exterior Door Control
 		0x334DB, // Shadows Outer Door Control
+		0x334DC, // Shadows Inner Door Control
 		0x00B10, // Monastery Left Door
 		0x00C92, // Monastery Right Door
 		0x09D9B, // Monastery Overhead Door Control

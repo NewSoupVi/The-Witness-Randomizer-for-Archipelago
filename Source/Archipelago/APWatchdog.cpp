@@ -22,7 +22,7 @@
 #define CHEAT_KEYS_ENABLED 0
 #define SKIP_HOLD_DURATION 0.6f
 
-APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl, std::string col, std::string dis, std::set<int> disP) : Watchdog(0.033f) {
+APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, std::pair<std::string, int64_t>> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, bool dl, bool elev, std::string col, std::string dis, std::set<int> disP) : Watchdog(0.033f) {
 	generator = std::make_shared<Generate>();
 	ap = client;
 	panelIdToLocationId = mapping;
@@ -42,6 +42,7 @@ APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPan
 	Collect = col;
 	DisabledPuzzlesBehavior = dis;
 	DisabledEntities = disP;
+	ElevatorsComeToYou = elev;
 
 	currentSpeedCharges = ReadPanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR);
 	if (currentSpeedCharges == 1060320051) {
@@ -347,7 +348,7 @@ void APWatchdog::CheckSolvedPanels() {
 }
 
 void APWatchdog::SkipPanel(int id, std::string reason, bool kickOut, int cost) {
-	if (dont_touch_panel_at_all.count(id) or ! actuallyEveryPanel.count(id)) {
+	if (dont_touch_panel_at_all.count(id) or ! allPanels.count(id)) {
 		return;
 	}
 
@@ -399,7 +400,7 @@ void APWatchdog::MarkLocationChecked(int locationId)
 	if (!locationIdToPanelId_READ_ONLY.count(locationId)) return;
 	int panelId = locationIdToPanelId_READ_ONLY[locationId];
 
-	if (actuallyEveryPanel.count(panelId)) {
+	if (allPanels.count(panelId)) {
 		if (!ReadPanelData<int>(panelId, SOLVED)) {
 			if (PuzzlesSkippedThisGame.count(panelId)) {
 				if(panelIdToLocationId.count(panelId)) panelIdToLocationId.erase(panelId);
@@ -552,7 +553,7 @@ void APWatchdog::HandlePowerSurge() {
 		if (DateTime::since(powerSurgeStartTime).count() > 10000)
 			ResetPowerSurge();
 		else {
-			for (const auto& panelId : actuallyEveryPanel) {
+			for (const auto& panelId : allPanels) {
 				/*if (ReadPanelData<int>(panelId, SOLVED))
 					continue;*/
 
@@ -575,7 +576,7 @@ void APWatchdog::HandlePowerSurge() {
 void APWatchdog::ResetPowerSurge() {
 	hasPowerSurge = false;
 
-	for (const auto& panelId : actuallyEveryPanel) {
+	for (const auto& panelId : allPanels) {
 		std::vector<float> powerValues = ReadPanelData<float>(panelId, POWER, 2);
 
 		if (powerValues[0] < -18.0f && powerValues[0] > -22.0f && powerValues[1] < -18.0f && powerValues[1] > -22.0f)
@@ -650,7 +651,7 @@ bool APWatchdog::PuzzleIsSkippable(int puzzleId) const {
 	//   detect when they've selected the reset line and then switch to the actual panel they want to interact with.
 
 	// Verify that this is, indeed, a panel.
-	if (std::find(actuallyEveryPanel.begin(), actuallyEveryPanel.end(), puzzleId) == actuallyEveryPanel.end()) {
+	if (std::find(allPanels.begin(), allPanels.end(), puzzleId) == allPanels.end()) {
 		return false;
 	}
 
@@ -771,7 +772,7 @@ void APWatchdog::SkipPuzzle() {
 }
 
 void APWatchdog::SkipPreviouslySkippedPuzzles() {
-	for (int id : actuallyEveryPanel) {
+	for (int id : allPanels) {
 		__int32 skipped = ReadPanelData<__int32>(id, VIDEO_STATUS_COLOR);
 
 		if (skipped >= PUZZLE_SKIPPED && skipped <= PUZZLE_SKIPPED_MAX) {
@@ -794,7 +795,7 @@ void APWatchdog::AddPuzzleSkip() {
 void APWatchdog::UnlockDoor(int id) {
 	if (DisabledEntities.count(id)) return;
 
-	if (actuallyEveryPanel.count(id)) {
+	if (allPanels.count(id)) {
 		WritePanelData<float>(id, POWER, { 1.0f, 1.0f });
 		state->keysReceived.insert(id);
 		panelLocker->UpdatePuzzleLock(*state, id);
@@ -814,7 +815,7 @@ void APWatchdog::UnlockDoor(int id) {
 		WritePanelData<float>(0x17CAA, POSITION, { 37.194f, -41.883f, 16.645f });
 		WritePanelData<float>(0x17CAA, SCALE, { 1.15f });
 
-		Memory::get()->UpdateEntityPosition(0x17CAA);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x17CAA);
 	}
 
 	if (ReadPanelData<int>(id, DOOR_OPEN)) {
@@ -827,23 +828,26 @@ void APWatchdog::UnlockDoor(int id) {
 	if (id == 0x0C310) {
 		WritePanelData<float>(0x02886, POSITION + 8, { 12.8f });
 
-		Memory::get()->UpdateEntityPosition(0x02886);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x02886);
 	}
 
 	if (id == 0x2D73F) {
 		WritePanelData<float>(0x021D7, POSITION + 8, { 10.0f });
 
-		Memory::get()->UpdateEntityPosition(0x021D7);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x021D7);
 	}
 
 	ASMPayloadManager::get()->OpenDoor(id);
 }
 
 void APWatchdog::SeverDoor(int id) {
-	if (actuallyEveryPanel.count(id)) {
+	if (allPanels.count(id)) {
 		WritePanelData<float>(id, POWER, { 1.0f, 1.0f });
 		state->keysInTheGame.insert(id);
 	}
+
+	// Disabled doors should behave as vanilla
+	if (DisabledEntities.count(id)) return;
 
 	if (severTargetsById.count(id)) {
 		severedDoorsList.insert(id);
@@ -870,7 +874,7 @@ void APWatchdog::SeverDoor(int id) {
 			if (conn.id == 0x28A0D) {
 				WritePanelData<float>(conn.id, POSITION, { -31.0f, 7.1f });
 
-				Memory::get()->UpdateEntityPosition(conn.id);
+				ASMPayloadManager::get()->UpdateEntityPosition(conn.id);
 			}
 
 			if (conn.id == 0x17CAB) {
@@ -881,7 +885,7 @@ void APWatchdog::SeverDoor(int id) {
 			if (conn.id == 0x01D8D) {
 				WritePanelData<float>(conn.id, POSITION, { -57.8f, 157.2f, 3.45f });
 
-				Memory::get()->UpdateEntityPosition(conn.id);
+				ASMPayloadManager::get()->UpdateEntityPosition(conn.id);
 			}
 
 			if (conn.target_no == ENTITY_NAME) {
@@ -1301,12 +1305,52 @@ void APWatchdog::CheckImportantCollisionCubes() {
 
 	insideChallengeBoxRange = challengeTimer.containsPoint(playerPosition);
 
-	// bonsai panel dots requirement
-	if (bonsaiCollisionCube.containsPoint(playerPosition) && panelLocker->PuzzleIsLocked(0x09d9b)) {
-		hudManager->showInformationalMessage(InfoMessageCategory::MissingSymbol,
-			"Needs Dots.");
+	if (ElevatorsComeToYou){
+		if (quarryElevatorUpper.containsPoint(playerPosition) && ReadPanelData<float>(0x17CC1, DOOR_OPEN_T) == 1.0f && ReadPanelData<float>(0x17CC1, DOOR_OPEN_T_TARGET) == 1.0f) {
+			ASMPayloadManager::get()->BridgeToggle(0x17CC4, false);
+		}
+
+		if (quarryElevatorLower.containsPoint(playerPosition) && ReadPanelData<float>(0x17CC1, DOOR_OPEN_T) == 0.0f && ReadPanelData<float>(0x17CC1, DOOR_OPEN_T_TARGET) == 0.0f) {
+			ASMPayloadManager::get()->BridgeToggle(0x17CC4, true);
+		}
+
+		if (bunkerElevatorCube.containsPoint(playerPosition)) {
+			std::vector<int> allBunkerElevatorDoors = { 0x0A069, 0x0A06A, 0x0A06B, 0x0A06C, 0x0A070, 0x0A071, 0x0A072, 0x0A073, 0x0A074, 0x0A075, 0x0A076, 0x0A077 };
+
+			bool problem = false;
+
+			for (int id : allBunkerElevatorDoors) {
+				if (ReadPanelData<float>(id, DOOR_OPEN_T) != ReadPanelData<float>(id, DOOR_OPEN_T_TARGET)) {
+					problem = true; // elevator is currently moving
+					break;
+				}
+			}
+
+			if (ReadPanelData<float>(0x0A076, DOOR_OPEN_T) == 0.0f && ReadPanelData<float>(0x0A075, DOOR_OPEN_T) == 1.0f) problem = true; // Already in the correct spot
+
+			if(!problem) ASMPayloadManager::get()->SendBunkerElevatorToFloor(5, true);
+		}
+
+		if (swampLongBridgeNear.containsPoint(playerPosition) && ReadPanelData<float>(0x17E74, DOOR_OPEN_T) == 1.0f) {
+			if (ReadPanelData<float>(0x1802C, DOOR_OPEN_T) == ReadPanelData<float>(0x1802C, DOOR_OPEN_T_TARGET) && ReadPanelData<float>(0x17E74, DOOR_OPEN_T_TARGET) == 1.0f) {
+				ASMPayloadManager::get()->ToggleFloodgate("floodgate_control_arm_a", false);
+				ASMPayloadManager::get()->ToggleFloodgate("floodgate_control_arm_b", true);
+			}
+		}
+
+		if (swampLongBridgeFar.containsPoint(playerPosition) && ReadPanelData<float>(0x1802C, DOOR_OPEN_T) == 1.0f) {
+			if (ReadPanelData<float>(0x17E74, DOOR_OPEN_T) == ReadPanelData<float>(0x17E74, DOOR_OPEN_T_TARGET) && ReadPanelData<float>(0x1802C, DOOR_OPEN_T_TARGET) == 1.0f) {
+				ASMPayloadManager::get()->ToggleFloodgate("floodgate_control_arm_a", true);
+				ASMPayloadManager::get()->ToggleFloodgate("floodgate_control_arm_b", false);
+			}
+		}
+
+		if (townRedRoof.containsPoint(playerPosition) && ReadPanelData<float>(0x2897C, DOOR_OPEN_T) != 1.0f && ReadPanelData<float>(0x2897C, DOOR_OPEN_T) == ReadPanelData<float>(0x2897C, DOOR_OPEN_T_TARGET)) {
+			ASMPayloadManager::get()->OpenDoor(0x2897C);
+		}
 	}
-	else if (tutorialPillarCube.containsPoint(playerPosition) && panelLocker->PuzzleIsLocked(0xc335)) {
+
+	if (tutorialPillarCube.containsPoint(playerPosition) && panelLocker->PuzzleIsLocked(0xc335)) {
 		hudManager->showInformationalMessage(InfoMessageCategory::MissingSymbol,
 			"Stone Pillar needs Triangles.");
 	}
@@ -1357,7 +1401,7 @@ bool APWatchdog::CheckPanelHasBeenSolved(int panelId) {
 }
 
 void APWatchdog::SetPanelItemTypeColor(const int& id, const unsigned int& itemFlags) {
-	if (!actuallyEveryPanel.count(id)) return;
+	if (!allPanels.count(id)) return;
 
 	Color backgroundColor;
 	if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT)
@@ -1742,7 +1786,7 @@ void APWatchdog::CheckDeathLink() {
 		if (ReadPanelData<int>(panelId, FLASH_MODE) == 2) panelIdToConsider = panelId;
 	}
 
-	if (panelIdToConsider == -1 || !actuallyEveryPanel.count(panelIdToConsider)) return;
+	if (panelIdToConsider == -1 || !allPanels.count(panelIdToConsider)) return;
 	if (deathlinkExcludeList.count(panelIdToConsider)) return;
 	if (PuzzleRandomization == SIGMA_EXPERT && deathlinkExpertExcludeList.count(panelIdToConsider)) return;
 

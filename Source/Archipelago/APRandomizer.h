@@ -26,6 +26,7 @@ class APRandomizer {
 		bool EPShuffle = false;
 		int MountainLasers = 7;
 		int ChallengeLasers = 11;
+		bool ElevatorsComeToYou = false;
 		bool DeathLink = false;
 
 		int mostRecentItemId = -1;
@@ -58,7 +59,7 @@ class APRandomizer {
 		std::map<int, std::vector<int>> progressiveItems;
 		std::map<int, std::pair<std::string, int64_t>> audioLogMessages;
 		std::map<int, int> panelIdToLocationIdReverse;
-		std::set<int> disabledPanels;
+		std::set<int> disabledEntities;
 
 		std::map<int, std::set<int>> obeliskSideIDsToEPHexes;
 		std::set<int> precompletedLocations;
