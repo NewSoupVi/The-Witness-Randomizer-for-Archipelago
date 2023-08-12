@@ -115,6 +115,10 @@ void APWatchdog::action() {
 }
 
 void APWatchdog::SetPlaytestParameters(const nlohmann::json& slotData) {
+	if (slotData.contains("playtest_solve_mode_boost_decay_multiplier")) {
+		solveModeSpeedBoostDecayFactor = slotData["playtest_solve_mode_boost_decay_multiplier"];
+	}
+	
 	if (slotData.contains("playtest_boost_duration")) {
 		speedBoostDuration = slotData["playtest_boost_duration"];
 	}
@@ -455,7 +459,7 @@ void APWatchdog::TriggerSlownessTrap() {
 
 void APWatchdog::HandleMovementSpeed(float deltaSeconds) {
 	if (slownessTrapTime > 0.f) {
-		slownessTrapTime -= deltaSeconds;
+		slownessTrapTime -= deltaSeconds * solveModeSpeedBoostDecayFactor;
 		if (slownessTrapTime <= 0.f) {
 			WriteMovementSpeed(speedBoostTime > 0.f ? boostedRunSpeed : defaultRunSpeed);
 		}
@@ -464,7 +468,7 @@ void APWatchdog::HandleMovementSpeed(float deltaSeconds) {
 		switch (InputWatchdog::get()->getInteractionState()) {
 		case InteractionState::Focusing:
 		case InteractionState::Solving:
-			speedBoostTime -= speedBoostTime * solveModeSpeedBoostDecayFactor;
+			speedBoostTime -= deltaSeconds * solveModeSpeedBoostDecayFactor;
 			break;
 		case InteractionState::Menu:
 			break;

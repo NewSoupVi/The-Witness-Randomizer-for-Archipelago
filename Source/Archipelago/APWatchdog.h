@@ -103,7 +103,7 @@ private:
 
 	float speedBoostTime = 0.f;
 	float slownessTrapTime = 0.f;
-	const float solveModeSpeedBoostDecayFactor = 0.f;
+	float solveModeSpeedBoostDecayFactor = 1.f;
 
 	int foundPuzzleSkips = 0;
 	int spentPuzzleSkips = 0;
