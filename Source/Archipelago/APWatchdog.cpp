@@ -1,3 +1,8 @@
+#include "windows.h"
+#include "mmsystem.h"
+
+#include "../../App/resource.h"
+
 #include "APWatchdog.h"
 
 #include "../DataTypes.h"
@@ -16,6 +21,7 @@
 #include "../DateTime.h"
 #include "../ClientWindow.h"
 #include "PanelRestore.h"
+#include "APAudioPlayer.h"
 #include "ASMPayloadManager.h"
 
 
@@ -145,6 +151,8 @@ void APWatchdog::CheckSolvedPanels() {
 
 	if (finalPanel != 0x09F7F && finalPanel != 0xFFF00 && ReadPanelDataIntentionallyUnsafe<int>(finalPanel, SOLVED) == 1 && !isCompleted) {
 		isCompleted = true;
+		hudManager->queueBannerMessage("Victory!");
+		APAudioPlayer::get()->PlayAudio(APJingle::Victory, APJingleBehavior::PlayImmediate);
 		ap->StatusUpdate(APClient::ClientStatus::GOAL);
 	}
 	if (finalPanel == 0x09F7F && !isCompleted)
@@ -153,6 +161,8 @@ void APWatchdog::CheckSolvedPanels() {
 
 		if (power > 0.0f) {
 			isCompleted = true;
+			hudManager->queueBannerMessage("Victory!");
+			APAudioPlayer::get()->PlayAudio(APJingle::Victory, APJingleBehavior::PlayImmediate);
 			ap->StatusUpdate(APClient::ClientStatus::GOAL);
 		}
 	}
@@ -162,6 +172,8 @@ void APWatchdog::CheckSolvedPanels() {
 
 		if (power > 0.0f) {
 			isCompleted = true;
+			hudManager->queueBannerMessage("Victory!");
+			APAudioPlayer::get()->PlayAudio(APJingle::Victory, APJingleBehavior::PlayImmediate);
 			ap->StatusUpdate(APClient::ClientStatus::GOAL);
 		}
 	}
@@ -1347,14 +1359,18 @@ void APWatchdog::SetItemRewardColor(const int& id, const int& itemFlags) {
 	if (!allPanels.count(id)) return;
 
 	Color backgroundColor;
-	if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT)
+	if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT){
 		backgroundColor = { 0.686f, 0.6f, 0.937f, 1.0f };
-	else if (itemFlags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE)
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
 		backgroundColor = { 0.427f, 0.545f, 0.91f, 1.0f };
-	else if (itemFlags & APClient::ItemFlags::FLAG_TRAP)
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_TRAP){
 		backgroundColor = { 0.98f, 0.502f, 0.447f, 1.0f };
-	else
+	}
+	else {
 		backgroundColor = { 0.0f , 0.933f, 0.933f, 1.0f };
+	}
 
 	if (id == 0x28998 || id == 0x28A69 || id == 0x17CAA || id == 0x00037 || id == 0x09FF8 || id == 0x09DAF || id == 0x0A01F || id == 0x17E67) {
 		WritePanelData<Color>(id, SUCCESS_COLOR_A, { backgroundColor });
@@ -1364,6 +1380,65 @@ void APWatchdog::SetItemRewardColor(const int& id, const int& itemFlags) {
 		WritePanelData<Color>(id, BACKGROUND_REGION_COLOR, { backgroundColor });
 	}
 	WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
+}
+
+void APWatchdog::PlaySentJingle(const int& id, const int& itemFlags) {
+	if (!ClientWindow::get()->getSetting(ClientToggleSetting::Jingles)) return;
+
+	bool isEP = allEPs.count(id);
+
+	bool epicVersion = hardPanels.count(id);
+
+	if (id == 0x0360D || id == 0x03616 || id == 0x03608 || id == 0x17CA4 || id == 0x032F5 || id == 0x09DE0 || id == 0x03613) { // Symmetry, Jungle, Desert, Monastery, Town, Bunker, Treehouse Laser Panel
+		epicVersion = true;
+	}
+	else if (id == 0x03612) { // Quarry Laser Panel: Make sure it wasn't skipped with neither Boathouse nor Stoneworks done
+		int skip = ReadPanelData<int>(id, VIDEO_STATUS_COLOR);
+
+		epicVersion = !(skip >= PUZZLE_SKIPPED + 2 && skip <= PUZZLE_SKIPPED_MAX) || !severedDoorsList.count(id);
+	}
+	else if (id == 0x19650) { // Shadows Laser Panel: In door shuffle, this is trivial
+		epicVersion = !severedDoorsList.count(0x19665) || !severedDoorsList.count(0x194B2) || !severedDoorsList.count(id);
+	}
+	else if (id == 0x0360E || id == 0x03317) { // Keep Panels: Make sure they weren't skipped in a doors mode
+		int skip = ReadPanelData<int>(id, VIDEO_STATUS_COLOR);
+
+		epicVersion = !(skip >= PUZZLE_SKIPPED + 2 && skip <= PUZZLE_SKIPPED_MAX) || !severedDoorsList.count(0x01BEC) || !severedDoorsList.count(id);
+	}
+	else if (id == 0x03615) { // Swamp Laser Panel: Make sure it wasn't acquired through the shortcut in a doors mode
+		epicVersion = !(severedDoorsList.count(0x2D880) && ReadPanelData<int>(0x2D880, DOOR_OPEN)) || !severedDoorsList.count(id);
+	}
+
+	Color backgroundColor;
+	if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT) {
+		APAudioPlayer::get()->PlayAudio(isEP ? APJingle::EPProgression : APJingle::PanelProgression, APJingleBehavior::Queue, epicVersion);
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
+		APAudioPlayer::get()->PlayAudio(isEP ? APJingle::EPUseful : APJingle::PanelUseful, APJingleBehavior::Queue, epicVersion);
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_TRAP) {
+		APAudioPlayer::get()->PlayAudio(isEP ? APJingle::EPTrap : APJingle::PanelTrap, APJingleBehavior::Queue, epicVersion);
+	}
+	else {
+		APAudioPlayer::get()->PlayAudio(isEP ? APJingle::EPFiller : APJingle::PanelFiller, APJingleBehavior::Queue, epicVersion);
+	}
+}
+
+void APWatchdog::PlayReceivedJingle(const int& itemFlags) {
+	if (!ClientWindow::get()->getSetting(ClientToggleSetting::Jingles)) return;
+
+	if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT) {
+		APAudioPlayer::get()->PlayAudio(APJingle::IncomingProgression, APJingleBehavior::DontQueue);
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
+		APAudioPlayer::get()->PlayAudio(APJingle::IncomingUseful, APJingleBehavior::DontQueue);
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_TRAP) {
+		APAudioPlayer::get()->PlayAudio(APJingle::IncomingTrap, APJingleBehavior::DontQueue);
+	}
+	else {
+		APAudioPlayer::get()->PlayAudio(APJingle::IncomingFiller, APJingleBehavior::DontQueue);
+	}
 }
 
 void APWatchdog::CheckEPSkips() {

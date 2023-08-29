@@ -109,6 +109,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			}
 
 			async->QueueReceivedItem({ item.item, advancement, realitem });
+			if (item.player != ap->get_player_number()) async->PlayReceivedJingle(item.flags);
 		}
 	});
 
@@ -359,6 +360,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			else
 			{
 				async->SetItemRewardColor(findResult->first, item.flags);
+				async->PlaySentJingle(findResult->first, item.flags);
 				if(!receiving) async->getHudManager()->queueNotification("Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
 			}
 		}
