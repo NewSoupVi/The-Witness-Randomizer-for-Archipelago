@@ -33,6 +33,9 @@
 #define CABLE_COLOR_G 0x15C
 #define CABLE_COLOR_B 0x160
 
+#define DOOR_OPEN_T 0x1D0
+#define DOOR_OPEN_T_TARGET 0x1D4
+
 #define DOOR_OPEN 0x1E4
 #define DOOR_OPEN_RATE 0xE0
 
@@ -644,7 +647,7 @@ inline std::map<int, std::string> laserNames = {
 	{0x17C65, "Monastery"},
 };
 
-const inline int AllPuzzles[]{
+const inline int LockablePuzzles[]{
 		0x01983, 0x01987, //Peekaboos
 
 		0x00293, 0x00295, 0x002C2, 0x0A3B5, 0x0A3B2, 0x03629, // Tutorial
@@ -748,6 +751,7 @@ const inline int AllPuzzles[]{
 		0x0A182, // Treehouse Door 3
 		0x2700B, // Treehouse Exterior Door Control
 		0x334DB, // Shadows Outer Door Control
+		0x334DC, // Shadows Inner Door Control
 		0x00B10, // Monastery Left Door
 		0x00C92, // Monastery Right Door
 		0x09D9B, // Monastery Overhead Door Control
@@ -783,6 +787,16 @@ const inline int AllPuzzles[]{
 
 		0x0A332, // Challenge Timer
 		0x3D9A9,
+
+		0x09FAA, 0x1C2DF, 0x1831E, 0x1C260, 0x1831C, 0x1C2F3, 0x1831D, 0x1C2B1, 0x1831B, // Desert Controls
+		0x17CC4, // Quarry Elevator
+		0x28A79, // Town Maze Panel
+		0x00815, // Theater Video Input
+		0x17CBC, // Treehouse Door Timer
+		0x037FF, // Treehouse Drawbridge
+		0x34BC5, 0x34BC6, // Bunker Controls
+
+		0x17CDF, 0x17CC8, 0x17CA6, 0x09DB8, 0x17C95, 0x0A054, // Boats
 };
 
 const inline std::set<int> deathlinkExcludeList = {
@@ -840,6 +854,39 @@ const inline std::set<int> allEPs = {
 	, 0x28B30, 0x035C9, 0x03335, 0x03412, 0x038A6, 0x038AA, 0x03E3F
 	, 0x03E40, 0x28B8E, 0x28B91, 0x03BCE, 0x03BCF, 0x03BD1, 0x339B6, 0x33A20
 	, 0x33A29, 0x33A2A, 0x33B06, 0x00614
+};
+
+const inline std::set<int> swampLowContrastPanels = {
+	0x0056E,
+	0x00390,
+	0x010CA,
+	0x00983,
+	0x00984,
+	0x00986,
+	0x00985,
+	0x00987,
+	0x181A9,
+	0x00999,
+	0x0099D,
+	0x009A0,
+	0x009A1,
+	0x00007,
+	0x00008,
+	0x00009,
+	0x0000A,
+	0x00609,
+	0x18488,
+	0x181F5,
+	0x17E2B,
+};
+
+const inline std::set<int> notThatBadSwampPanels = {
+	0x00469,
+	0x00472,
+	0x00262,
+	0x00474,
+	0x00553,
+	0x0056F,
 };
 
 const inline std::map<int, std::string> precompletableEpToName = {

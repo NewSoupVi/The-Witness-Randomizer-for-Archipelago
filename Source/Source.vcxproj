@@ -176,9 +176,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Archipelago\APAudioPlayer.h" />
     <ClInclude Include="Archipelago\APState.h" />
     <ClInclude Include="Archipelago\APRandomizer.h" />
     <ClInclude Include="Archipelago\APGameData.h" />
+    <ClInclude Include="Archipelago\ASMPayloadManager.h" />
     <ClInclude Include="Archipelago\OriginalPanelData.h" />
     <ClInclude Include="Archipelago\PanelRestore.h" />
     <ClInclude Include="Archipelago\PuzzleData.h" />
@@ -210,9 +212,11 @@
     <ClInclude Include="Watchdog.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Archipelago\APAudioPlayer.cpp" />
     <ClCompile Include="Archipelago\APGameData.cpp" />
     <ClCompile Include="Archipelago\APRandomizer.cpp" />
     <ClCompile Include="Archipelago\APWatchdog.cpp" />
+    <ClCompile Include="Archipelago\ASMPayloadManager.cpp" />
     <ClCompile Include="Archipelago\PanelRestore.cpp" />
     <ClCompile Include="ASMBuilder.cpp" />
     <ClCompile Include="ClientWindow.cpp" />
