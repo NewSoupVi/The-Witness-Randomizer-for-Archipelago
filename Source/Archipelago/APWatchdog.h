@@ -204,6 +204,8 @@ private:
 	int mostRecentActivePanelId = -1;
 	int mostRecentPanelState = -1;
 
+	float skipErrorMessageTime = 0.f;
+
 	std::string skipCostMessageOverride;
 	float skipButtonHeldTime = 0.f; // Tracks how long the skip button has been held.
 

@@ -157,6 +157,9 @@ void APWatchdog::HandleInteractionState() {
 			// The player has started solving a puzzle. Update our active panel ID to match.
 			activePanelId = GetActivePanel();
 			mostRecentActivePanelId = activePanelId;
+
+			// Clear puzzle skip error message, if any, since we've changed the active puzzle.
+			hudManager->clearInformationalMessage(InfoMessageCategory::SkipErrorMessage);
 		}
 	}
 	else if (interactionState != InteractionState::Focusing) {
@@ -545,6 +548,9 @@ void APWatchdog::UpdatePuzzleSkip(float deltaSeconds) {
 	const InputWatchdog* inputWatchdog = InputWatchdog::get();
 	InteractionState interactionState = inputWatchdog->getInteractionState();
 	if (interactionState == InteractionState::Solving || interactionState == InteractionState::Focusing) {
+		const InputButton skipButton = inputWatchdog->getCustomKeybind(CustomKey::SKIP_PUZZLE);
+		const bool skipButtonDown = skipButton != InputButton::NONE && inputWatchdog->getButtonState(skipButton);
+		
 		// If we're tracking a panel for the purpose of puzzle skips, update our internal logic.
 		if (activePanelId != -1) {
 			// Check to see if the puzzle is in a skippable state.
@@ -553,25 +559,54 @@ void APWatchdog::UpdatePuzzleSkip(float deltaSeconds) {
 				//   being opened remotely.
 				puzzleSkipCost = CalculatePuzzleSkipCost(activePanelId, skipCostMessageOverride);
 
-				// Update skip button logic.
-				InputButton skipButton = inputWatchdog->getCustomKeybind(CustomKey::SKIP_PUZZLE);
-				bool skipButtonHeld = skipButton != InputButton::NONE && inputWatchdog->getButtonState(skipButton);
-				if (skipButtonHeld) {
-					skipButtonHeldTime += deltaSeconds;
-					if (skipButtonHeldTime > SKIP_HOLD_DURATION) {
-						SkipPuzzle();
+				const int availableSkips = GetAvailablePuzzleSkips();
+				if (availableSkips >= puzzleSkipCost) {
+					// Update skip button logic.
+					if (skipButtonDown) {
+						skipButtonHeldTime += deltaSeconds;
+						if (skipButtonHeldTime > SKIP_HOLD_DURATION) {
+							SkipPuzzle();
+						}
 					}
-				}
-				else {
-					skipButtonHeldTime = 0.f;
+					else {
+						skipButtonHeldTime = 0.f;
+					}
+				} else if (skipButtonDown) {
+					skipErrorMessageTime = 3.f;
+					if (availableSkips == 0) {
+						hudManager->showInformationalMessage(InfoMessageCategory::SkipErrorMessage, "No puzzle skips available.");
+					}
+					else {
+						hudManager->showInformationalMessage(InfoMessageCategory::SkipErrorMessage, "Not enough puzzle skips available.");
+					}
 				}
 			}
 			else {
 				// The puzzle is not in a skippable state.
 				skipCostMessageOverride = "";
 				puzzleSkipCost = -1;
+
+				if (skipButtonDown) {
+					hudManager->showInformationalMessage(InfoMessageCategory::SkipErrorMessage, "Selected puzzle cannot be skipped.");
+					skipErrorMessageTime = 3.f;
+				}
 			}
 		}
+		else if (skipButtonDown) {
+			hudManager->showInformationalMessage(InfoMessageCategory::SkipErrorMessage, "No puzzle selected to skip.");
+			skipErrorMessageTime = 3.f;
+		}
+
+		if (skipErrorMessageTime > 0.f) {
+			skipErrorMessageTime -= deltaSeconds;
+			if (skipErrorMessageTime <= 0.f) {
+				hudManager->clearInformationalMessage(InfoMessageCategory::SkipErrorMessage);
+			}
+		}
+	}
+	else {
+		skipErrorMessageTime = 0.f;
+		hudManager->clearInformationalMessage(InfoMessageCategory::SkipErrorMessage);
 	}
 }
 
@@ -1523,9 +1558,9 @@ void APWatchdog::SetStatusMessages() const {
 			if (!skipCostMessageOverride.empty()) {
 				hudManager->setSolveStatusMessage(skipCostMessageOverride);
 			}
-			else if (puzzleSkipCost >= 0) {
-				hudManager->setSolveStatusMessage("Skip cost: " + std::to_string(puzzleSkipCost));
-			}
+			// else if (puzzleSkipCost >= 0) {
+			// 	hudManager->setSolveStatusMessage("Skip cost: " + std::to_string(puzzleSkipCost));
+			// }
 			else {
 				hudManager->clearSolveStatusMessage();
 			}

@@ -12,11 +12,12 @@ class Memory;
 
 // Categories for the informational messages shown in the lower center of the screen. Ordered from highest to lowest priority.
 enum class InfoMessageCategory : int {
-	EnvironmentalPuzzle = 0,
+	SkipErrorMessage = 0,
 	MissingSymbol = 1,
-	ApHint = 2,
-	Dog = 3,
-	COUNT = 4
+	EnvironmentalPuzzle = 2,
+	ApHint = 3,
+	Dog = 4,
+	COUNT = 5
 };
 
 class HudManager {
