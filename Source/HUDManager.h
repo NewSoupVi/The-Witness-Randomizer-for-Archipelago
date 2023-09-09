@@ -38,30 +38,44 @@ public:
 
 	// Show a message to the player, such as "Slowed! 10 seconds remaining."
 	void setWalkStatusMessage(const std::string& text);
-	void clearWalkStatusMessage() { setWalkStatusMessage(std::string()); };
+	void clearWalkStatusMessage() { setWalkStatusMessage(std::string()); }
 
 	// Show an input action hint to the player while in solve mode, such as "Hold [TAB]: Skip Puzzle".
 	void setSolveStatusMessage(const std::string& text);
-	void clearSolveStatusMessage() { setSolveStatusMessage(std::string()); };
+	void clearSolveStatusMessage() { setSolveStatusMessage(std::string()); }
 
 	// Show debug text in the upper-left corner of the screen.
 	void setDebugText(const std::string& text);
 	void clearDebugText() { setDebugText(std::string()); }
+
+	void setNumPuzzleSkips(int count);
+	void setEnergyCapacity(int capacity);
+	void setEnergyLevels(int wholeCharges, float partialCharge);
 
 	// Queues a notification specific to the given item. If notifications for multiple of the same item are queued,
 	//   these notifications will be batched accordingly.
 	void queueItemMessage(const std::string& itemName, const std::string& otherPlayer, const int64_t& itemFlags,
 					      bool sending, int quantity = 1);
 
-	// Queues a notification for receiving energy. If multiple energy notifications are queued, combines them. Pass -1
-	//   to indicate that a max energy item was received.
-	void queueEnergyFillMessage(int addedPercentage);
-
 private:
 
 	void updateBannerMessages(float deltaSeconds);
 	void updateNotifications(float deltaSeconds);
 	void updateInformationalMessages(float deltaSeconds);
+
+	void updateSkipReadout(float deltaSeconds);
+	void updateEnergyReadout(float deltaSeconds);
+
+	std::string formatEnergyReadout() const;
+
+	int numSkips = 0;
+
+	int chargeCapacity = 1;
+	int wholeCharges = 0;
+	float partialCharge = 0.f;
+
+	float totalShownCharge = 0.f;
+	
 
 	// Splits the given string into individual lines, first by chopping it by newlines, and second by wrapping any long strings.
 	static std::vector<std::string> separateLines(std::string input, int maxLength = 80);
@@ -106,12 +120,17 @@ private:
 	};
 
 	std::set<ItemMessage, ItemMessageComparator> queuedItemMessages;
-	int queuedEnergy = 0;
 
 	std::array<std::string, static_cast<int>(InfoMessageCategory::COUNT)> informationalMessages;
 	std::string currentInformationalMessage;
 	bool shouldShowInformationalMessage;
 	float informationalMessageFade = 0.f;
+	
+	std::string puzzleSkipReadout;
+	float skipReadoutFlashPercent = 0.f;
+
+	std::string energyReadout;
+	float energyReadoutFlashPercent = 0.f;
 
 	std::string worldMessage;
 	std::string walkStatusMessage;

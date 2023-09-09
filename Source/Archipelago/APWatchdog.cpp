@@ -39,12 +39,6 @@ APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPan
 	obeliskHexToEPHexes = o;
 	entityToName = epn;
 
-	currentSpeedCharges = ReadPanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR);
-	if (currentSpeedCharges == 1060320051) {
-		// This value is at its default, indicating a new save.
-		currentSpeedCharges = 0;
-	}
-
 	for (auto [key, value] : obeliskHexToEPHexes) {
 		obeliskHexToAmountOfEPs[key] = (int)value.size();
 	}
@@ -61,9 +55,17 @@ APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPan
 		panelsThatHaveToBeSkippedForEPPurposes.insert(0x334D8);
 		panelsThatHaveToBeSkippedForEPPurposes.insert(0x03629); // Tutorial Gate Open
 	}
+	hudManager = std::make_shared<HudManager>();
+
+	int savedSpeedCharges = ReadPanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR);
+	if (savedSpeedCharges == 1060320051) {
+		// This value is at its default, indicating a new save.
+		savedSpeedCharges = 0;
+	}
+
+	SetCurrentSpeedCharges(savedSpeedCharges);
 
 	lastFrameTime = std::chrono::system_clock::now();
-	hudManager = std::make_shared<HudManager>();
 }
 
 void APWatchdog::action() {
@@ -125,6 +127,11 @@ void APWatchdog::SetPlaytestParameters(const nlohmann::json& slotData) {
 
 	if (slotData.contains("playtest_num_charges_per_full_boost")) {
 		numSpeedChargesPerBoost = slotData["playtest_num_charges_per_full_boost"];
+
+		
+		const int wholeCharges = currentSpeedCharges / numSpeedChargesPerBoost;
+		const float partialCharges = static_cast<float>(currentSpeedCharges % numSpeedChargesPerBoost) / numSpeedChargesPerBoost;
+		hudManager->setEnergyLevels(wholeCharges, partialCharges);
 	}
 
 	if (slotData.contains("playtest_num_charges_per_small_fill_base")) {
@@ -137,6 +144,7 @@ void APWatchdog::SetPlaytestParameters(const nlohmann::json& slotData) {
 
 	if (slotData.contains("playtest_num_starting_boost_capacity")) {
 		baseBoostCapacity = slotData["playtest_num_starting_boost_capacity"];
+		hudManager->setEnergyCapacity(baseBoostCapacity + foundBoostCapacity);
 	}
 }
 
@@ -413,42 +421,32 @@ void APWatchdog::GrantSpeedBoostFill(SpeedBoostFillSize size) {
 	
 	switch (size) {
 	case SpeedBoostFillSize::Full:
-		currentSpeedCharges = std::min(currentChargeCapacity, currentSpeedCharges + numSpeedChargesPerBoost);
-		hudManager->queueEnergyFillMessage(100);
+		SetCurrentSpeedCharges(std::min(currentChargeCapacity, currentSpeedCharges + numSpeedChargesPerBoost));
 		break;
 	case SpeedBoostFillSize::Partial: {
 			const int grantedCharges = numSpeedChargesPerSmallFillBase +
 				currentBoostCapacity * numSpeedChargesPerSmallFillScaling;
-			currentSpeedCharges = std::min(currentChargeCapacity, currentSpeedCharges + grantedCharges);
-			hudManager->queueEnergyFillMessage(grantedCharges * 100 / numSpeedChargesPerBoost);
+			SetCurrentSpeedCharges(std::min(currentChargeCapacity, currentSpeedCharges + grantedCharges));
 			break;
 		}
 	case SpeedBoostFillSize::MaxFill:
-		currentSpeedCharges = currentChargeCapacity;
-		hudManager->queueEnergyFillMessage(-1);
+		SetCurrentSpeedCharges(currentChargeCapacity);
 	}
-
-	WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
 }
 
 void APWatchdog::GrantSpeedBoostCapacity() {
 	foundBoostCapacity += 1;
+	hudManager->setEnergyCapacity(baseBoostCapacity + foundBoostCapacity);
 }
 
 void APWatchdog::TryTriggerSpeedBoost() {
-	if (speedBoostTime > 0.5f || slownessTrapTime > 0.f) {
+	if (slownessTrapTime > 0.f) {
 		return;
 	}
 	
 	if (currentSpeedCharges >= numSpeedChargesPerBoost) {
-		currentSpeedCharges -= numSpeedChargesPerBoost;
-		WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
-		
-		speedBoostTime = speedBoostDuration;
-
-		if (slownessTrapTime <= 0.f) {
-			WriteMovementSpeed(boostedRunSpeed);
-		}
+		SetCurrentSpeedCharges(currentSpeedCharges - numSpeedChargesPerBoost);
+		speedBoostTime += speedBoostDuration;
 	}
 }
 
@@ -553,7 +551,7 @@ void APWatchdog::UpdatePuzzleSkip(float deltaSeconds) {
 			if (PuzzleIsSkippable(activePanelId)) {
 				// The puzzle is still skippable. Update the panel's cost in case something has changed, like a latch
 				//   being opened remotely.
-				puzzleSkipCost = CalculatePuzzleSkipCost(activePanelId, puzzleSkipInfoMessage);
+				puzzleSkipCost = CalculatePuzzleSkipCost(activePanelId, skipCostMessageOverride);
 
 				// Update skip button logic.
 				InputButton skipButton = inputWatchdog->getCustomKeybind(CustomKey::SKIP_PUZZLE);
@@ -570,7 +568,7 @@ void APWatchdog::UpdatePuzzleSkip(float deltaSeconds) {
 			}
 			else {
 				// The puzzle is not in a skippable state.
-				puzzleSkipInfoMessage = "";
+				skipCostMessageOverride = "";
 				puzzleSkipCost = -1;
 			}
 		}
@@ -643,34 +641,33 @@ bool APWatchdog::PuzzleIsSkippable(int puzzleId) const {
 	return true;
 }
 
-int APWatchdog::CalculatePuzzleSkipCost(int puzzleId, std::string& specialMessage) const {
+int APWatchdog::CalculatePuzzleSkipCost(int puzzleId, std::string& costStringOverride) const {
+	costStringOverride = "";
+	
 	// Check for special cases.
 	if (puzzleId == 0x03612) {
 		// Quarry laser panel. Check for latches.
 		bool leftLatchOpen = ReadPanelData<int>(0x288E9, DOOR_OPEN) != 0;
 		bool rightLatchOpen = ReadPanelData<int>(0x28AD4, DOOR_OPEN) != 0;
 		if (!leftLatchOpen && !rightLatchOpen) {
-			specialMessage = "Skipping this panel costs 1 Puzzle Skip per unopened latch.";
+			costStringOverride = "Skip cost: 2 (1 per unopened latch)";
 			return 2;
 		}
 		else if (!leftLatchOpen || !rightLatchOpen) {
-			specialMessage = "Skipping this panel costs 1 Puzzle Skip per unopened latch.";
+			costStringOverride = "Skip cost: 1 (1 per unopened latch)";
 			return 1;
 		}
 		else {
-			specialMessage = "";
 			return 1;
 		}
 	}
 	else if (puzzleId == 0x1C349) {
 		// Symmetry island upper panel. Check for latch.
-		bool latchOpen = ReadPanelData<int>(0x28AE8, DOOR_OPEN) != 0;
-		if (!latchOpen) {
-			specialMessage = "Skipping this panel costs 2 Puzzle Skips while latched.";
+		if (!ReadPanelData<int>(0x28AE8, DOOR_OPEN) != 0) {
+			costStringOverride = "Skip cost: 2 (while latched)";
 			return 2;
 		}
 		else {
-			specialMessage = "";
 			return 1;
 		}
 	}
@@ -683,11 +680,10 @@ int APWatchdog::CalculatePuzzleSkipCost(int puzzleId, std::string& specialMessag
 		latchAmount += ReadPanelData<int>(0x28942, DOOR_OPEN) == 0;
 
 		if (latchAmount) {
-			specialMessage = "Skipping this panel costs 1 Puzzle Skip per unopened latch.";
+			costStringOverride = "Skip cost: " + std::to_string(latchAmount) + " (1 per unopened latch)";
 			return latchAmount;
 		}
 		else {
-			specialMessage = "";
 			return -1;
 		}
 	}
@@ -698,7 +694,7 @@ int APWatchdog::CalculatePuzzleSkipCost(int puzzleId, std::string& specialMessag
 		for (int smallPuzzleId : {0x09FC1, 0x09F8E, 0x09F01, 0x09EFF}) {
 			uint32_t statusColor = ReadPanelData<uint32_t>(smallPuzzleId, VIDEO_STATUS_COLOR);
 			if (statusColor < PUZZLE_SKIPPED || statusColor > PUZZLE_SKIPPED_MAX) {
-				specialMessage = "Skipping this panel requires skipping all the small puzzles.";
+				costStringOverride = "Can't skip: must skip small puzzles first.";
 				return -1;
 			}
 		}
@@ -706,7 +702,6 @@ int APWatchdog::CalculatePuzzleSkipCost(int puzzleId, std::string& specialMessag
 		return 1;
 	}
 
-	specialMessage = "";
 	return 1;
 }
 
@@ -720,6 +715,8 @@ void APWatchdog::SkipPuzzle() {
 	}
 
 	spentPuzzleSkips += puzzleSkipCost;
+	hudManager->setNumPuzzleSkips(GetAvailablePuzzleSkips());
+	
 	skipButtonHeldTime = 0.f;
 
 	Special::SkipPanel(activePanelId, true);
@@ -745,6 +742,7 @@ void APWatchdog::SkipPreviouslySkippedPuzzles() {
 
 void APWatchdog::AddPuzzleSkip() {
 	foundPuzzleSkips++;
+	hudManager->setNumPuzzleSkips(GetAvailablePuzzleSkips());
 }
 
 void APWatchdog::UnlockDoor(int id) {
@@ -1502,64 +1500,39 @@ void APWatchdog::CheckEPSkips() {
 void APWatchdog::SetStatusMessages() const {
 	const InputWatchdog* inputWatchdog = InputWatchdog::get();
 	const InteractionState interactionState = inputWatchdog->getInteractionState();
-	if (interactionState == InteractionState::Walking) {
+//	if (interactionState == InteractionState::Walking) {
+	{ // TEMP: Always show speed boost time remaining.
 		std::string speedString;
 		if (slownessTrapTime > 0.f) {
 			const int seconds = (int)std::ceil(std::abs(slownessTrapTime));
-			speedString = "Slowed for " + std::to_string(seconds) + " seconds.\n";
+			speedString = "Slowed for " + std::to_string(seconds) + " seconds.";
+			hudManager->setWalkStatusMessage(speedString);
 		}
 		else if (speedBoostTime > 0.f) {
 			const int seconds = (int)std::ceil(std::abs(speedBoostTime));
-			speedString = "Speed boosted for " + std::to_string(seconds) + " seconds.\n";
+			speedString = "Speed boosted for " + std::to_string(seconds) + " seconds.";
+			hudManager->setWalkStatusMessage(speedString);
 		}
-
-		const int numFullBoosts = currentSpeedCharges / numSpeedChargesPerBoost;
-		const int boostCapacity = baseBoostCapacity + foundBoostCapacity;
-
-		speedString +=
-			"[" + InputWatchdog::getNameForInputButton(inputWatchdog->getCustomKeybind(CustomKey::SPEED_BOOST)) + "] ";
-		speedString += "Speed Boost (" + std::to_string(numFullBoosts) + "/" + std::to_string(boostCapacity);
-
-		if (numFullBoosts != boostCapacity) {
-			const int percentToNext = (currentSpeedCharges % numSpeedChargesPerBoost) * 100 / numSpeedChargesPerBoost;
-			speedString += ", " + std::to_string(percentToNext) + "% to next";
+		else {
+			hudManager->clearWalkStatusMessage();
 		}
-		
-		speedString += ")";
-
-		hudManager->setWalkStatusMessage(speedString);
 	}
-	else if (interactionState == InteractionState::Focusing || interactionState == InteractionState::Solving) {
-		// Always show the number of puzzle skips available while in focus mode.
-		int availableSkips = GetAvailablePuzzleSkips();
-		std::string skipMessage = "Have " + std::to_string(availableSkips) + " Puzzle Skip" + (availableSkips != 1 ? "s" : "") + ".";
 
+	/* else */ if (interactionState == InteractionState::Focusing || interactionState == InteractionState::Solving) {
 		if (activePanelId != -1) {
-			// If we have a special skip message for the current puzzle, show it above the skip count.
-			if (puzzleSkipInfoMessage.size() > 0) {
-				skipMessage = puzzleSkipInfoMessage + "\n" + skipMessage;
+			if (!skipCostMessageOverride.empty()) {
+				hudManager->setSolveStatusMessage(skipCostMessageOverride);
 			}
-
-			if (CanUsePuzzleSkip()) {
-				// We have a selected, skippable, affordablSe puzzle. Show an input hint.
-				skipMessage += " Hold [" + inputWatchdog->getNameForInputButton(inputWatchdog->getCustomKeybind(CustomKey::SKIP_PUZZLE)) + "] to use.";
-
-				// Show special costs, if any.
-				if (puzzleSkipCost == 0) {
-					skipMessage += " (Free!)";
-				}
-				else if (puzzleSkipCost > 1) {
-					skipMessage += " (Costs " + std::to_string(puzzleSkipCost) + ".)";
-				}
+			else if (puzzleSkipCost >= 0) {
+				hudManager->setSolveStatusMessage("Skip cost: " + std::to_string(puzzleSkipCost));
 			}
-			else if (availableSkips > 0 && puzzleSkipCost > availableSkips) {
-				// The player has some puzzle skips available, but not enough to solve the selected puzzle. Note that this
-				//   message will only show for puzzles that cost more than one skip.
-				skipMessage += "(Costs " + std::to_string(puzzleSkipCost) + ".)";
+			else {
+				hudManager->clearSolveStatusMessage();
 			}
 		}
-
-		hudManager->setSolveStatusMessage(skipMessage);
+		else {
+			hudManager->clearSolveStatusMessage();
+		}
 	}
 	else if (interactionState == InteractionState::Keybinding) {
 //		CustomKey currentKey = inputWatchdog->getCurrentlyRebindingKey();
@@ -1765,6 +1738,16 @@ bool APWatchdog::LookingAtTheDog() const {
 	}
 
 	return true;
+}
+
+void APWatchdog::SetCurrentSpeedCharges(int newValue) {
+	currentSpeedCharges = newValue;
+	
+	const int wholeCharges = currentSpeedCharges / numSpeedChargesPerBoost;
+	const float partialCharges = static_cast<float>(currentSpeedCharges % numSpeedChargesPerBoost) / numSpeedChargesPerBoost;
+	hudManager->setEnergyLevels(wholeCharges, partialCharges);
+
+	WritePanelData<int>(0x3D9A7, VIDEO_STATUS_COLOR, { currentSpeedCharges });
 }
 
 APServerPoller::APServerPoller(APClient* client) : Watchdog(0.1f) {

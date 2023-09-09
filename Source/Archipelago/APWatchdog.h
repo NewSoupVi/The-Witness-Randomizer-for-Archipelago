@@ -157,6 +157,8 @@ private:
 	void PettingTheDog(float deltaSeconds);
 	bool LookingAtTheDog() const;
 
+	void SetCurrentSpeedCharges(int newValue);
+
 	// Updates puzzle skip logic.
 	void UpdatePuzzleSkip(float deltaSeconds);
 
@@ -170,7 +172,7 @@ private:
 
 	// Computes the cost to skip the puzzle. If the cost is unusual, will set
 	//   specialMessage to indicate the reason why.
-	int CalculatePuzzleSkipCost(int puzzleId, std::string& specialMessage) const;
+	int CalculatePuzzleSkipCost(int puzzleId, std::string& costStringOverride) const;
 
 	// Returns the number of skips currently available to the player.
 	int GetAvailablePuzzleSkips() const;
@@ -202,7 +204,7 @@ private:
 	int mostRecentActivePanelId = -1;
 	int mostRecentPanelState = -1;
 
-	std::string puzzleSkipInfoMessage;
+	std::string skipCostMessageOverride;
 	float skipButtonHeldTime = 0.f; // Tracks how long the skip button has been held.
 
 	// The cost to skip the currently-selected puzzle. -1 if the puzzle cannot be

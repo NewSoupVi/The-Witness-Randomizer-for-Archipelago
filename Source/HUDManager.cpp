@@ -21,12 +21,18 @@
 #define TIME_BETWEEN_NOTIFICATIONS 1.5f
 #define NOTIFICATION_SCROLL_TIME 0.5f
 
+#define RESOURCE_FLASH_TIME 1.f
+#define ENERGY_FILL_RATE 1.f
+
 // Verifies that sigscans are working by comparing them against hardcoded values in the Steam build.
 #define DEBUG_SIGSCAN 0
 
 
 HudManager::HudManager() {
 	overwriteSubtitleFunction();
+
+	puzzleSkipReadout = "Puzzle Skips: x0";
+	energyReadout = formatEnergyReadout();
 }
 
 void HudManager::update(float deltaSeconds) {
@@ -37,9 +43,11 @@ void HudManager::update(float deltaSeconds) {
 	if (interactionState != InteractionState::Menu) {
 		updateBannerMessages(deltaSeconds);
 		updateNotifications(deltaSeconds);
+		updateSkipReadout(deltaSeconds);
+		updateEnergyReadout(deltaSeconds);
 	}
 
-	bool isSolving = (interactionState == Focusing || interactionState == Solving);
+	const bool isSolving = (interactionState == Focusing || interactionState == Solving);
 	if (isSolving && solveTweenFactor < 1.f) {
 		solveTweenFactor = std::min(solveTweenFactor + deltaSeconds * 0.8f, 1.f);
 		hudTextDirty = true;
@@ -109,6 +117,46 @@ void HudManager::setDebugText(const std::string& text) {
 	}
 }
 
+void HudManager::setNumPuzzleSkips(int count) {
+	if (count != numSkips) {
+		if (count > numSkips) {
+			skipReadoutFlashPercent = 1.f;
+		} else if (count < numSkips) {
+			skipReadoutFlashPercent = std::min(1.f, skipReadoutFlashPercent + 0.25f);
+		}
+
+		numSkips = count;
+		puzzleSkipReadout = "Puzzle Skips: x" + std::to_string(numSkips);
+	}
+}
+
+void HudManager::setEnergyCapacity(int capacity) {
+	if (capacity != chargeCapacity) {
+		chargeCapacity = capacity;
+		energyReadoutFlashPercent = 1.f;
+	}
+}
+
+void HudManager::setEnergyLevels(int inWholeCharges, float inPartialCharge) {
+	if (inWholeCharges == wholeCharges && wholeCharges == chargeCapacity) {
+		// Energy was set to max while it was already at max. Flash to indicate that energy was awarded.
+		energyReadoutFlashPercent = std::min(1.f, energyReadoutFlashPercent + 0.25f);
+	} else if (inWholeCharges > wholeCharges || inPartialCharge > partialCharge) {
+		// We've gained energy. Just flash here; text will be updated in updateEnergyReadout().
+		energyReadoutFlashPercent = std::min(1.f, energyReadoutFlashPercent + 0.25f);
+	} else if (inWholeCharges < wholeCharges || inPartialCharge < 0) {
+		// We've spent energy. Update the whole number instantaneously.
+		totalShownCharge = inWholeCharges + inPartialCharge;
+		energyReadoutFlashPercent = std::min(1.f, energyReadoutFlashPercent + 0.25f);
+
+		energyReadout = formatEnergyReadout();
+		hudTextDirty = true;
+	}
+
+	wholeCharges = inWholeCharges;
+	partialCharge = inPartialCharge;
+}
+
 void HudManager::queueItemMessage(const std::string& itemName, const std::string& otherPlayer,
                                   const int64_t& itemFlags, bool sending, int quantity) {
 	const auto equalityCheck = [&](const ItemMessage& message) {
@@ -132,18 +180,6 @@ void HudManager::queueItemMessage(const std::string& itemName, const std::string
 		newMessage.itemFlags = itemFlags;
 
 		queuedItemMessages.insert(newMessage);
-	}
-}
-
-void HudManager::queueEnergyFillMessage(int addedPercentage) {
-	if (queuedEnergy == -1) {
-		return;
-	}
-	else if (addedPercentage == -1) {
-		queuedEnergy = -1;
-	}
-	else {
-		queuedEnergy += addedPercentage;
 	}
 }
 
@@ -234,16 +270,6 @@ void HudManager::updateNotifications(float deltaSeconds) {
 			timeToNextNotification = TIME_BETWEEN_NOTIFICATIONS;
 			hudTextDirty = true;
 		}
-		else if (queuedEnergy > 0) {
-			const Notification notification("+" + std::to_string(queuedEnergy) + "% energy.", RgbColor());
-			queuedEnergy = 0;
-			activeNotifications.insert(activeNotifications.begin(), notification);
-		}
-		else if (queuedEnergy == -1) {
-			const Notification notification("Energy capacity filled to maximum.", RgbColor());
-			queuedEnergy = 0;
-			activeNotifications.insert(activeNotifications.begin(), notification);
-		}
 	}
 }
 
@@ -256,6 +282,60 @@ void HudManager::updateInformationalMessages(float deltaSeconds) {
 		informationalMessageFade = std::max(0.f, informationalMessageFade - deltaSeconds * 3.f);
 		hudTextDirty = true;
 	}
+}
+
+void HudManager::updateSkipReadout(float deltaSeconds) {
+	if (skipReadoutFlashPercent > 0.f) {
+		skipReadoutFlashPercent = std::max(0.f, skipReadoutFlashPercent - deltaSeconds / RESOURCE_FLASH_TIME);
+		hudTextDirty = true;
+	}
+}
+
+void HudManager::updateEnergyReadout(float deltaSeconds) {
+
+	const float targetTotalCharge = wholeCharges + partialCharge;
+	if (targetTotalCharge > totalShownCharge) {
+		const float newTotalCharge = std::max(totalShownCharge, totalShownCharge + ENERGY_FILL_RATE * deltaSeconds);
+		
+		float shownIntegral, newIntegral;
+		std::modf(totalShownCharge, &shownIntegral);
+		std::modf(newTotalCharge, &newIntegral);
+		if (newIntegral > shownIntegral) {
+			// We've filled the meter and gained a charge. Flash the display.
+			energyReadoutFlashPercent = 1.f;
+		}
+		
+		totalShownCharge = newTotalCharge;
+		energyReadout = formatEnergyReadout();
+		hudTextDirty = true;
+	} else {
+		// We ideally shouldn't get here, since a decrease in total energy should have been handled in setEnergyLevels.
+		//   Just update the readout.
+		totalShownCharge = targetTotalCharge;
+		energyReadout = formatEnergyReadout();
+		hudTextDirty = true;
+	}
+
+	if (energyReadoutFlashPercent > 0.f) {
+		energyReadoutFlashPercent = std::max(0.f, energyReadoutFlashPercent - deltaSeconds / RESOURCE_FLASH_TIME);
+		hudTextDirty = true;
+	}
+}
+
+std::string HudManager::formatEnergyReadout() const {
+	
+	float shownIntegral;
+	const float shownFraction = std::modf(totalShownCharge, &shownIntegral);
+	
+	std::string output = "Speed Boosts: " + std::to_string(static_cast<int>(shownIntegral)) +
+		"/" + std::to_string(chargeCapacity);
+
+	if (shownIntegral < chargeCapacity) {
+		const int percentToNext = static_cast<int>(shownFraction * 100.f);
+		output += ", " + std::to_string(percentToNext) + "% to next";
+	}
+
+	return output;
 }
 
 std::vector<std::string> HudManager::separateLines(std::string input, int maxLength) {
@@ -1087,12 +1167,48 @@ HudManager::HudTextPayload HudManager::buildPayload() const {
 
 	HudTextPayload payload;
 
+	// Resources.
+	{
+		// Resources go in the lower-left corner of the screen.
+		HudTextBlock skipTextBlock;
+		skipTextBlock.horizontalAlignment = 0.f;
+		skipTextBlock.horizontalPosition = 0.f;
+		skipTextBlock.verticalPosition = 0.f;
+		//skipTextBlock.linePaddingTop = 1.f;
+	
+		HudTextLine skipTextLine;
+		skipTextLine.textColor = RgbColor(1.f, 1.f, 1.f, easeOut(skipReadoutFlashPercent) * 0.3f + 0.7f);
+		skipTextLine.shadowColor = RgbColor(0.f, 0.f, 0.f, shadowAlpha(1.f));
+		skipTextLine.text = puzzleSkipReadout;
+
+		skipTextBlock.lines.push_back(skipTextLine);
+
+		// HACK: Manually bump the skip text up by one line. There's a bug in the line padding thing.
+		skipTextLine.text = "";
+		skipTextBlock.lines.push_back(skipTextLine);
+		
+		payload.blocks.push_back(skipTextBlock);
+
+		HudTextBlock energyTextBlock;
+		energyTextBlock.horizontalAlignment = 0.f;
+		energyTextBlock.horizontalPosition = 0.f;
+		energyTextBlock.verticalPosition = 0.f;
+	
+		HudTextLine energyTextLine;
+		energyTextLine.textColor = RgbColor(1.f, 1.f, 1.f, easeOut(energyReadoutFlashPercent) * 0.3f + 0.7f);
+		energyTextLine.shadowColor = RgbColor(0.f, 0.f, 0.f, shadowAlpha(1.f));
+		energyTextLine.text = energyReadout;
+
+		energyTextBlock.lines.push_back(energyTextLine);
+		payload.blocks.push_back(energyTextBlock);
+	}
+
 	// Show the solve mode status message.
 	if (!solveStatusMessage.empty() && solveFadePercent > 0.f) {
-		// Status messages go in the lower-left corner of the screen.
+		// Status messages go in the lower-right corner of the screen.
 		HudTextBlock solveTextBlock;
-		solveTextBlock.horizontalAlignment = 0.f;
-		solveTextBlock.horizontalPosition = 0.f;
+		solveTextBlock.horizontalAlignment = 1.f;
+		solveTextBlock.horizontalPosition = 1.f;
 		solveTextBlock.verticalPosition = 0.f;
 
 		// When the game fades in the border, it immediately shows it at a low transparency factor rather than fading
@@ -1102,30 +1218,42 @@ HudManager::HudTextPayload HudManager::buildPayload() const {
 		std::vector<std::string> expandedLines = separateLines(solveStatusMessage);
 		for (const std::string& lineText : expandedLines) {
 			HudTextLine lineData;
-			lineData.textColor = RgbColor(1.f, 1.f, 1.f, 0.7f * solveTextAlpha);
+			lineData.textColor = RgbColor(1.f, 1.f, 1.f, 0.7 * solveTextAlpha);
 			lineData.shadowColor = RgbColor(0.f, 0.f, 0.f, shadowAlpha(solveTextAlpha));
 			lineData.text = lineText;
 
 			solveTextBlock.lines.push_back(lineData);
+		}
+		
+		// TEMP: Adjust the solve text block up if we have a walk message. (We're doing this by adding lines because the
+		//   padding variables are broken.
+		if (!walkStatusMessage.empty()) {
+			const HudTextLine blankLine;
+			const int numWalkLines = separateLines(walkStatusMessage).size();
+			for (int i = 0; i < numWalkLines; i++) {
+				solveTextBlock.lines.push_back(blankLine);
+			}
 		}
 
 		payload.blocks.push_back(solveTextBlock);
 	}
 
 	// Show the walk mode status message.
-	if (!walkStatusMessage.empty() && solveFadePercent < 1.f) {
-		// Status messages go in the lower-left corner of the screen.
+	if (!walkStatusMessage.empty()/* && solveFadePercent < 1.f*/) {
+		// Status messages go in the lower-right corner of the screen.
 		HudTextBlock walkTextBlock;
-		walkTextBlock.horizontalAlignment = 0.f;
-		walkTextBlock.horizontalPosition = 0.f;
+		walkTextBlock.horizontalAlignment = 1.f;
+		walkTextBlock.horizontalPosition = 1.f;
 		walkTextBlock.verticalPosition = 0.f;
 
-		float walkTextAlpha = 1.f - (isSolving ? std::clamp(2 * solveFadePercent, 0.f, 1.f) : solveFadePercent);
+		// TEMP: Always show the walk text message if we have one, since we're still using it to show boosts.
+		//float walkTextAlpha = 1.f - (isSolving ? std::clamp(2 * solveFadePercent, 0.f, 1.f) : solveFadePercent);
+		float walkTextAlpha = 1.f;
 
 		std::vector<std::string> expandedLines = separateLines(walkStatusMessage);
 		for (const std::string& lineText : expandedLines) {
 			HudTextLine lineData;
-			lineData.textColor = RgbColor(1.f, 1.f, 1.f, 0.7f * walkTextAlpha);
+			lineData.textColor = RgbColor(1.f, 1.f, 1.f, 0.7 * walkTextAlpha);
 			lineData.shadowColor = RgbColor(0.f, 0.f, 0.f, shadowAlpha(walkTextAlpha));
 			lineData.text = lineText;
 
