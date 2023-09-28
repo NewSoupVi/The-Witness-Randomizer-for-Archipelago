@@ -305,7 +305,23 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 	});
 
-	ap->set_set_reply_handler([&](const std::string key, const nlohmann::json value, nlohmann::json original_value) {
+	ap->set_set_reply_handler([&](const nlohmann::json& command) {
+		std::string key = command["key"];
+		nlohmann::json value = command["value"];
+		nlohmann::json original_value = command["original_value"];
+
+		if (key == "EnergyLink") {
+			int player = -1;
+
+			if (command.contains("WitnessAuthor")) {
+				player = command["WitnessAuthor"];
+			}
+
+			async->HandleEnergyLinkResponse(value, original_value, player);
+
+			return;
+		}
+		
 		if (value != original_value) {
 			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, SyncProgress);
 			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, SyncProgress);
@@ -540,6 +556,8 @@ void APRandomizer::PostGeneration() {
 	async->getHudManager()->queueBannerMessage("Randomized!");
 
 	async->start();
+
+	ap->SetNotify({ "EnergyLink" });
 }
 
 void APRandomizer::HighContrastMode() {

@@ -59,4 +59,19 @@ public:
 	static std::vector<int> findAllSequences(const std::vector<T>& sourceData, const std::vector<T>& searchSequence) {
 		return findAllSequences(sourceData, searchSequence, 0, sourceData.size() - searchSequence.size());
 	}
+
+	static std::string convertToSI(int value) {
+		int index = (int)std::log10(value);
+		index = index / 3;
+
+		std::vector<std::string> prefixes = { "", "k", "M", "G", "T", "P", "E", "Z", "Y", "R", "Q" };
+
+		if (index >= prefixes.size()) return "999Q";
+
+		std::string prefix = prefixes[index];
+
+		value /= pow(1000, index);
+
+		return std::to_string(value) + prefix;
+	}
 };

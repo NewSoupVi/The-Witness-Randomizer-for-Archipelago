@@ -162,7 +162,7 @@ void Generate::initPanel(int id) {
 	for (Point p : blockPos) _openpos.erase(p); //Remove the points which the user has defined to not place symbols on
 	for (Point p : _splitPoints) _openpos.erase(p); //The split points will have erasers and cannot have any other symbols placed on them
 	_fullGaps = hasFlag(Config::FullGaps);
-	if (_symmetry || id == 0x00076 || id == 0x01D3F) _panel->symmetry = _symmetry; //Init user-defined puzzle symmetry if not "None".
+	if (_symmetry || id == 0x00076 || id == 0x01D3F || id == 0x0042D) _panel->symmetry = _symmetry; //Init user-defined puzzle symmetry if not "None".
 	//0x00076 (Symmetry Island Fading Lines 7) and 0x01D3F (Keep Blue Pressure Plates) are exceptions because they need to have symmetry removed
 	if (pathWidth != 1) _panel->pathWidth = pathWidth; //Init path scale. "1" is considered the default, and therefore means no change.
 }

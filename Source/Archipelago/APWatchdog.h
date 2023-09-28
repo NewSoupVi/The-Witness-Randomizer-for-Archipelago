@@ -13,6 +13,7 @@ class APClient;
 class Generate;
 class HudManager;
 class PanelLocker;
+class APEnergyLink;
 
 
 class APWatchdog : public Watchdog {
@@ -59,6 +60,8 @@ public:
 
 	void ProcessDeathLink(double time, std::string cause, std::string source);
 
+	void HandleEnergyLinkResponse(int value, int original_value, int player);
+
 
 	bool processingItemMessages = false;
 	bool newItemsJustIn = false;
@@ -70,6 +73,7 @@ public:
 	std::set<int> seenAudioMessages;
 
 private:
+	APEnergyLink* energyLink;
 	APClient* ap;
 	PanelLocker* panelLocker;
 	std::shared_ptr<Generate> generator;
@@ -114,6 +118,9 @@ private:
 
 	int storageCheckCounter = 6;
 
+	int generatePuzzleNext = -1;
+	bool firstEnergyLinkGenerationDone = false;
+
 	float speedTime = 0.0f;
 	float solveModeSpeedFactor = 0.0f;
 
@@ -131,6 +138,10 @@ private:
 
 	void CheckDeathLink();
 	void SendDeathLink(int panelId);
+
+	void HandleEnergyLink();
+
+	void SendEnergy();
 
 	void QueueItemMessages();
 

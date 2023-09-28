@@ -11,6 +11,9 @@
 #include "PanelLocker.h"
 #include "SkipSpecialCases.h"
 
+#include "APEnergyLink.h"
+#include "../Utilities.h"
+
 #include <thread>
 #include "../Randomizer.h"
 #include "../DateTime.h"
@@ -44,6 +47,8 @@ APWatchdog::APWatchdog(APClient* client, std::map<int, int> mapping, int lastPan
 	DisabledPuzzlesBehavior = dis;
 	DisabledEntities = disP;
 	ElevatorsComeToYou = elev;
+
+	energyLink = new APEnergyLink(state);
 
 	speedTime = ReadPanelData<float>(0x3D9A7, VIDEO_STATUS_COLOR);
 	if (speedTime == 0.6999999881f) { // original value
@@ -90,6 +95,8 @@ void APWatchdog::action() {
 	halfSecondCountdown -= frameDuration;
 	if (halfSecondCountdown <= 0) {
 		halfSecondCountdown += 0.5f;
+
+		HandleEnergyLink();
 
 		QueueItemMessages();
 
@@ -1863,4 +1870,60 @@ void APWatchdog::UpdateInfiniteChallenge() {
 
 		infiniteChallenge = isChecked;
 	}
+}
+
+void APWatchdog::HandleEnergyLink() {
+	generatePuzzleNext--;
+
+	if (ReadPanelData<int>(0x0042D, SOLVED)) {
+		WritePanelData<int>(0x0042D, SOLVED, { 0 });
+		generatePuzzleNext = 1;
+		if (ReadPanelData<int>(0x0042D, STYLE_FLAGS) & Panel::Style::HAS_ERASERS) {
+			generatePuzzleNext = 2;
+		}
+
+		if (firstEnergyLinkGenerationDone) {
+			SendEnergy();
+		}
+
+		firstEnergyLinkGenerationDone = true;
+	}
+
+	if (generatePuzzleNext == 1) {
+		WritePanelData<float>(0x0042D, MAX_BROADCAST_DISTANCE, { 0.0001f });
+		WritePanelData<int>(0x0042D, STYLE_FLAGS, { ReadPanelData<int>(0x0042D, STYLE_FLAGS) & ~0x2 });
+		WritePanelData<int>(0x0042D, POWER, { 0, 0 });
+		WritePanelData<int>(0x0042D, TRACED_EDGES, { 0 });
+	}
+
+	if (generatePuzzleNext == 0) {
+		WritePanelData<int>(0x0042D, 0x31C, { 0 }); //erased decorations
+		energyLink->generateNewPuzzle(0x0042D);
+		WritePanelData<float>(0x0042D, MAX_BROADCAST_DISTANCE, { -1.0f });
+		WritePanelData<float>(0x0042D, POWER, { 1.0f, 1.0f });
+	}
+
+	//IMPORTANT!!!
+	//WHENEVER THIS ID IS CHANGED, IT NEEDS TO BE CHANGED IN GENERATE.CPP 164, REPLACING 0x0042D
+}
+
+void APWatchdog::SendEnergy() {
+	int output = energyLink->getPowerOutput();
+
+	APClient::DataStorageOperation operation;
+	operation.operation = "add";
+	operation.value = output;
+
+	std::list<APClient::DataStorageOperation> operations;
+	operations.push_back(operation);
+
+	ap->Set("EnergyLink", NULL, false, operations, { {"WitnessAuthor", ap->get_player_number()} });
+}
+
+void APWatchdog::HandleEnergyLinkResponse(int value, int original_value, int player) {
+	if (player != ap->get_player_number()) {
+		return;
+	}
+
+	hudManager->queueBannerMessage("Sent " + Utilities::convertToSI(value - original_value) + "J.");
 }
