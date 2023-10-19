@@ -32,7 +32,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	ap->set_room_info_handler([&]() {
 		const int item_handling_flags_all = 7;
 
-		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 4, 3});
+		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 4, 4});
 	});
 
 	ap->set_location_checked_handler([&](const std::list<int64_t>& locations) {
@@ -587,6 +587,10 @@ void APRandomizer::Init() {
 	Memory* memory = Memory::get();
 
 	mostRecentItemId = memory->ReadPanelData<int>(0x0064, VIDEO_STATUS_COLOR + 12);
+	if (mostRecentItemId == 1065353216) { // Default value. Hopefully noone launches their game after the ~1 billionth item was sent, exactly.
+		mostRecentItemId = -1;
+		memory->WritePanelData<int>(0x64, VIDEO_STATUS_COLOR + 12, { -1 });
+	}
 
 	for (int panel : LockablePuzzles) {
 		memory->InitPanel(panel);
