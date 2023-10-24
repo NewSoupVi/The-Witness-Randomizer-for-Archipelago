@@ -206,6 +206,16 @@ public:
         int slot;
         std::string alias;
         std::string name;
+
+        friend void to_json(nlohmann::json &j, const NetworkPlayer &player)
+        {
+            j = nlohmann::json{
+                {"team", player.team},
+                {"slot", player.slot},
+                {"alias", player.alias},
+                {"name", player.name},
+            };
+        }
     };
 
     struct TextNode {
@@ -214,14 +224,35 @@ public:
         std::string text;
         int player = 0;
         unsigned flags = FLAG_NONE;
+
+        static TextNode from_json(const json& j)
+        {
+            return {
+                j.value("type", ""),
+                j.value("color", ""),
+                j.value("text", ""),
+                j.value("player", 0),
+                j.value("flags", 0U),
+            };
+        }
     };
 
+    /**
+     * Parsed arguments of PrintJSON.
+     * Pointer arguments are optional (null if missing).
+     * You can not store any pointer. You'll have to store a copy of the value.
+     */
     struct PrintJSONArgs {
         std::list<TextNode> data;
         std::string type;
+        // members below are optional and absent when null
         int* receiving = nullptr;
         NetworkItem* item = nullptr;
         bool* found = nullptr;
+        int* team = nullptr;
+        int* slot = nullptr;
+        std::string* message = nullptr;
+        std::list<std::string>* tags = nullptr;
         int* countdown = nullptr;
     };
 
@@ -344,21 +375,25 @@ public:
             int receiving;
             NetworkItem item;
             bool found;
+            int team;
+            int slot;
+            std::string message;
+            std::list<std::string> tags;
             int countdown;
 
             for (const auto& part: command["data"]) {
-                args.data.push_back({
-                    part.value("type", ""),
-                    part.value("color", ""),
-                    part.value("text", ""),
-                    part.value("player", 0),
-                    part.value("flags", 0U),
-                });
+                args.data.push_back(TextNode::from_json(part));
             }
 
             args.type = command.value("type", "");
 
-            auto it = command.find("item");
+            auto it = command.find("receiving");
+            if (it != command.end()) {
+               receiving = *it;
+               args.receiving = &receiving;
+            }
+
+            it = command.find("item");
             if (it != command.end()) {
                 item = {
                    it->value("item", (int64_t) 0),
@@ -370,16 +405,34 @@ public:
                 args.item = &item;
             }
 
-            it = command.find("receiving");
-            if (it != command.end()) {
-               receiving = *it;
-               args.receiving = &receiving;
-            }
-
             it = command.find("found");
             if (it != command.end()) {
                 found = *it;
                 args.found = &found;
+            }
+
+            it = command.find("team");
+            if (it != command.end()) {
+                team = *it;
+                args.team = &team;
+            }
+
+            it = command.find("slot");
+            if (it != command.end()) {
+                slot = *it;
+                args.slot = &slot;
+            }
+
+            it = command.find("message");
+            if (it != command.end()) {
+                message = *it;
+                args.message = &message;
+            }
+
+            it = command.find("tags");
+            if (it != command.end()) {
+                it->get_to(tags);
+                args.tags = &tags;
             }
 
             it = command.find("countdown");
@@ -402,9 +455,37 @@ public:
 
     void set_print_json_handler(std::function<void(const std::list<TextNode>&)> f)
     {
-        set_print_json_handler([f](const PrintJSONArgs& args) {
+        set_print_json_handler([f](const json& command) {
             if (!f) return;
-            f(args.data);
+
+            std::list<TextNode> data;
+
+            for (const auto& part: command["data"]) {
+                data.push_back(TextNode::from_json(part));
+            }
+
+            f(data);
+        });
+    }
+
+    void set_print_json_handler(std::function<void(const std::list<TextNode>&, const json& extra)> f)
+    {
+        set_print_json_handler([f](const json& command) {
+            if (!f)
+                return;
+
+            std::list<TextNode> data;
+            json extra;
+
+            for (const auto& part: command["data"]) {
+                data.push_back(TextNode::from_json(part));
+            }
+
+            for (const auto& pair: command.items()) {
+                extra[pair.key()] = pair.value();
+            }
+
+            f(data, extra);
         });
     }
 
@@ -419,6 +500,16 @@ public:
     }
 
     void set_retrieved_handler(std::function<void(const std::map<std::string,json>&)> f)
+    {
+        set_retrieved_handler([f](const std::map<std::string,json>& keys, const json& message) {
+            if (!f)
+                return;
+
+            f(keys);
+        });
+    }
+
+    void set_retrieved_handler(std::function<void(const std::map<std::string,json>&, const json& message)> f)
     {
         _hOnRetrieved = f;
     }
@@ -495,6 +586,21 @@ public:
         fwrite(s.c_str(), 1, s.length(), f);
         fclose(f);
         return true;
+    }
+
+    const std::set<int64_t> get_checked_locations() const
+    {
+        return _checkedLocations;
+    }
+
+    const std::set<int64_t> get_missing_locations() const
+    {
+        return _missingLocations;
+    }
+
+    const std::list<NetworkPlayer>& get_players() const
+    {
+        return _players;
     }
 
     std::string get_player_alias(int slot)
@@ -606,10 +712,15 @@ public:
                 {"cmd", "LocationChecks"},
                 {"locations", locations},
             }};
+
             debug("> " + packet[0]["cmd"].get<std::string>() + ": " + packet.dump());
             _ws->send(packet.dump());
         } else {
             _checkQueue.insert(locations.begin(), locations.end());
+        }
+        for (const auto& location: locations) {
+            _checkedLocations.insert(location);
+            _missingLocations.erase(location);
         }
         return true;
     }
@@ -757,13 +868,18 @@ public:
         return true;
     }
 
-    bool Get(const std::list<std::string>& keys)
+    bool Get(const std::list<std::string>& keys, const json& extras = json::value_t::object)
     {
         if (_state < State::SLOT_CONNECTED) return false;
+
         auto packet = json{{
             {"cmd", "Get"},
             {"keys", keys},
         }};
+
+        if (!extras.is_null())
+            packet[0].update(extras);
+
         debug("> " + packet[0]["cmd"].get<std::string>() + ": " + packet.dump());
         _ws->send(packet.dump());
         return true;
@@ -1079,6 +1195,7 @@ private:
                     }
                 }
                 else if (cmd == "Connected") {
+                    // store data
                     _state = State::SLOT_CONNECTED;
                     _team = command["team"];
                     _slotnr = command["slot"];
@@ -1093,18 +1210,9 @@ private:
                             player["name"].get<std::string>(),
                         });
                     }
-                    if (_hOnSlotConnected) _hOnSlotConnected(command["slot_data"]);
-                    // TODO: store checked/missing locations
-                    if (_hOnLocationChecked) {
-                        std::list<int64_t> checkedLocations;
-                        for (auto& location: command["checked_locations"]) {
-                            checkedLocations.push_back(location.get<int64_t>());
-                        }
-                        if (!checkedLocations.empty())
-                            _hOnLocationChecked(checkedLocations);
-                    }
-
-                    //Send the checks and scouts queued if any
+                    _checkedLocations = command.value<std::set<int64_t>>("checked_locations", {});
+                    _missingLocations = command.value<std::set<int64_t>>("missing_locations", {});
+                    // send queued checks if any - this makes sure checked/missing is up to date
                     if (!_checkQueue.empty()) {
                         std::list<int64_t> queuedChecks;
                         for (int64_t location : _checkQueue) {
@@ -1113,6 +1221,18 @@ private:
                         _checkQueue.clear();
                         LocationChecks(queuedChecks);
                     }
+                    // run the callbacks
+                    if (_hOnSlotConnected)
+                        _hOnSlotConnected(command["slot_data"]);
+                    if (_hOnLocationChecked) {
+                        std::list<int64_t> checkedLocations;
+                        for (auto& location: command["checked_locations"]) {
+                            checkedLocations.push_back(location.get<int64_t>());
+                        }
+                        if (!checkedLocations.empty())
+                            _hOnLocationChecked(checkedLocations);
+                    }
+                    // send queued scouts if any
                     if (!_scoutQueues.empty()) {
                         for (const auto& pair: _scoutQueues) {
                             if (!pair.second.empty()) {
@@ -1125,7 +1245,6 @@ private:
                         }
                         _scoutQueues.clear();
                     }
-        
                 }
                 else if (cmd == "ReceivedItems") {
                     std::list<NetworkItem> items;
@@ -1155,15 +1274,15 @@ private:
                     if (_hOnLocationInfo) _hOnLocationInfo(items);
                 }
                 else if (cmd == "RoomUpdate") {
-                    // TODO: store checked/missing locations
-                    if (_hOnLocationChecked) {
-                        std::list<int64_t> checkedLocations;
-                        for (auto& location: command["checked_locations"]) {
-                            checkedLocations.push_back(location.get<int64_t>());
-                        }
-                        if (!checkedLocations.empty())
-                            _hOnLocationChecked(checkedLocations);
+                    std::list<int64_t> checkedLocations;
+                    for (const auto& j: command["checked_locations"]) {
+                        int64_t location = j.get<int64_t>();
+                        checkedLocations.push_back(location);
+                        _checkedLocations.insert(location);
+                        _missingLocations.erase(location);
                     }
+                    if (_hOnLocationChecked && !checkedLocations.empty())
+                        _hOnLocationChecked(checkedLocations);
                     if (command["hint_points"].is_number_integer())
                         _hintPoints = command["hint_points"];
                 }
@@ -1196,7 +1315,7 @@ private:
                         std::map<std::string, json> keys;
                         for (auto& pair: command["keys"].items())
                             keys[pair.key()] = pair.value();
-                        _hOnRetrieved(keys);
+                        _hOnRetrieved(keys, command);
                     }
                 }
                 else if (cmd == "SetReply") {
@@ -1256,6 +1375,11 @@ private:
             );
         } catch (const std::exception& ex) {
             _ws = nullptr;
+            if (_tryWSS && _uri.rfind("ws://", 0) == 0) {
+                _uri = "wss://" + _uri.substr(5);
+            } else {
+                _uri = "ws://" + _uri.substr(6);
+            }
             log((std::string("error connecting: ") + ex.what()).c_str());
         }
         _lastSocketConnect = now();
@@ -1263,8 +1387,9 @@ private:
         // NOTE: browsers have a very badly implemented connection rate limit
         // alternatively we could always wait for onclose() to get the actual
         // allowed rate once we are over it
-        unsigned long maxReconnectInterval = std::max(15000UL, _ws->get_ok_connect_interval());
-        if (_socketReconnectInterval > maxReconnectInterval) _socketReconnectInterval = maxReconnectInterval;
+        unsigned long maxReconnectInterval = std::max(15000UL, _ws ? _ws->get_ok_connect_interval() : 0);
+        if (_socketReconnectInterval > maxReconnectInterval)
+            _socketReconnectInterval = maxReconnectInterval;
     }
 
     void _set_data_package(const json& data)
@@ -1338,7 +1463,7 @@ private:
     std::function<void(const json&)> _hOnPrintJson = nullptr;
     std::function<void(const json&)> _hOnBounced = nullptr;
     std::function<void(const std::list<int64_t>&)> _hOnLocationChecked = nullptr;
-    std::function<void(const std::map<std::string, json>&)> _hOnRetrieved = nullptr;
+    std::function<void(const std::map<std::string, json>&, const json&)> _hOnRetrieved = nullptr;
     std::function<void(const json&)> _hOnSetReply = nullptr;
 
     unsigned long _lastSocketConnect;
@@ -1362,6 +1487,8 @@ private:
     int _locationCount = 0;
     int _hintCostPercent = 0;
     int _hintPoints = 0;
+    std::set<int64_t> _checkedLocations;
+    std::set<int64_t> _missingLocations;
     APDataPackageStore* _dataPackageStore;
 #ifndef AP_NO_DEFAULT_DATA_PACKAGE_STORE
     bool _dataPackageStoreAllocated = false;

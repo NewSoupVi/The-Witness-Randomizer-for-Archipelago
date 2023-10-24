@@ -506,10 +506,10 @@ namespace wswrap {
         bool _polling = false;
         std::unique_ptr<asio::high_resolution_timer> _ping_timer;
         int _ping_interval = 25000;
-        onerror_ex_handler _herror;
-        onclose_handler _hclose;
         onopen_handler _hopen;
+        onclose_handler _hclose;
         onmessage_handler _hmessage;
+        onerror_ex_handler _herror;
 #ifndef __cpp_exceptions
         bool _connect_error = false;
         std::string _connect_error_message;
