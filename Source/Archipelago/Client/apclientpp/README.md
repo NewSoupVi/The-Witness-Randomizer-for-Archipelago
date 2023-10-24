@@ -95,7 +95,7 @@ APClient will automatically try both plain and SSL if SSL support is enabled and
 To add SSL/wss support on desktop, the following steps are required:
 
 * update wswrap to the latest version
-* add openssl (libssl and libcrypt) and optionally crypt32 to the "link libraries". Either static or dynamic.
+* add openssl (libssl and libcrypto) and optionally crypt32 to the "link libraries". Either static or dynamic.
 * include the OpenSSL DLLs (if linked dynamically) and license file
 * to make certificate verifaction work cross-platform
   * include a cert store file and its license, e.g. [curl's CA Extract](https://curl.se/docs/caextract.html)
@@ -120,8 +120,8 @@ Once `slot_connected` was received, a `socket_error` or `socket_disconnected` ca
 * slot_connected `(const json&)`: called as reply to `ConnectSlot` when successful. argument is slot data.
 * slot_refused `(const std::string&)`: called as reply to `ConnectSlot` failed. argument is reason.
 * slot_disconnected `(void)`: currently unused
-* items_received `(std::list<NetworkItem>&)`: called when receiving items - previously received after connect and new over time
-* location_info `(std::list<NetworkItem>&)`: called as reply to `LocationScouts`
+* items_received `(const std::list<NetworkItem>&)`: called when receiving items - previously received after connect and new over time
+* location_info `(const std::list<NetworkItem>&)`: called as reply to `LocationScouts`
 * location_checked `(std::list<int64_t>&)`: called when a local location was remoetly checked or was already checked when connecting
 * data_package_changed `(const json&)`: called when data package (texts) were updated from the server
 * print `(const std::string&)`: legacy chat message
