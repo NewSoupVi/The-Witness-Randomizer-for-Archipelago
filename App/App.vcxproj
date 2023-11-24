@@ -130,7 +130,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libcrypto_static.lib;crypt32.lib;F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libssl_static.lib;msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+	  <AdditionalLibraryDirectories>C:\Program Files (x86)\Windows Kits\10\Lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.18362.0\um;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libcrypto_static.lib;crypt32.lib;F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libssl_static.lib;msvcrt.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -178,11 +179,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalDependencies>F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libcrypto_static.lib;crypt32.lib;F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libssl_static.lib;msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libcrypto_static.lib;crypt32.lib;F:\Dokumente\The-Witness-Randomizer-for-Archipelago\Source\Archipelago\Client\openssl\libssl_static.lib;msvcrt.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Main.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Version.h" />
   </ItemGroup>
   <ItemGroup>
@@ -191,6 +193,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
     <ResourceCompile Include="Version.rc" />
   </ItemGroup>
   <ItemGroup>
@@ -200,6 +203,45 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="changes.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="..\Music\Dog Filler.wav" />
+    <Media Include="..\Music\Dog Progression.wav" />
+    <Media Include="..\Music\Dog Trap.wav" />
+    <Media Include="..\Music\Dog Useful.wav" />
+    <Media Include="..\Music\EP Filler 2.wav" />
+    <Media Include="..\Music\EP Filler.wav" />
+    <Media Include="..\Music\EP Progression 2.wav" />
+    <Media Include="..\Music\EP Progression.wav" />
+    <Media Include="..\Music\EP Trap 2.wav" />
+    <Media Include="..\Music\EP Trap.wav" />
+    <Media Include="..\Music\EP Useful 2.wav" />
+    <Media Include="..\Music\EP Useful.wav" />
+    <Media Include="..\Music\Incoming Filler.wav" />
+    <Media Include="..\Music\Incoming Progression.wav" />
+    <Media Include="..\Music\Incoming Trap.wav" />
+    <Media Include="..\Music\Incoming Useful.wav" />
+    <Media Include="..\Music\Panel Filler 1.wav" />
+    <Media Include="..\Music\Panel Filler 2.wav" />
+    <Media Include="..\Music\Panel Filler 3.wav" />
+    <Media Include="..\Music\Panel Filler 4.wav" />
+    <Media Include="..\Music\Panel Filler Epic.wav" />
+    <Media Include="..\Music\Panel Progression 1.wav" />
+    <Media Include="..\Music\Panel Progression 2.wav" />
+    <Media Include="..\Music\Panel Progression 3.wav" />
+    <Media Include="..\Music\Panel Progression 4.wav" />
+    <Media Include="..\Music\Panel Progression 5.wav" />
+    <Media Include="..\Music\Panel Progression Epic.wav" />
+    <Media Include="..\Music\Panel Trap 1.wav" />
+    <Media Include="..\Music\Panel Trap 2.wav" />
+    <Media Include="..\Music\Panel Trap 3.wav" />
+    <Media Include="..\Music\Panel Trap Epic.wav" />
+    <Media Include="..\Music\Panel Useful 1.wav" />
+    <Media Include="..\Music\Panel Useful 2.wav" />
+    <Media Include="..\Music\Panel Useful 3.wav" />
+    <Media Include="..\Music\Panel Useful 4.wav" />
+    <Media Include="..\Music\Panel Useful Epic.wav" />
+    <Media Include="..\Music\Victory.wav" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
