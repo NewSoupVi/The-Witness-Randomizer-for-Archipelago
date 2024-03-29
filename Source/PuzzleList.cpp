@@ -6,12 +6,12 @@
 #include "Watchdog.h"
 #include "ClientWindow.h"
 #include "Panels.h"
+#include "Archipelago/ASMPayloadManager.h"
 
 void PuzzleList::GenerateAllN()
 {
 	generator->setLoadingData(336);
 	CopyTargets();
-	GenerateShadowsN();
 	GenerateTutorialN();
 	GenerateSymmetryN();
 	GenerateQuarryN();
@@ -29,7 +29,65 @@ void PuzzleList::GenerateAllN()
 	GenerateCavesN();
 	ClientWindow::get()->setStatusMessage("Generation complete!");
 	(new ArrowWatchdog(0x0056E))->start(); //Easy way to close the randomizer when the game is done
-	//GenerateMonasteryN(); //Can't randomize
+	GenerateMonasteryN(); //Can't randomize
+	GenerateShadowsN();
+}
+
+void PuzzleList::GenerateMonasteryN() {
+	generator->setLoadingData("Monastery", 8);
+	generator->resetConfig();
+
+	Memory* memory = Memory::get();
+
+	generator->generate(0x00290, Decoration::Dot_Intersection, 2, Decoration::Dot, 3);
+	generator->generate(0x00038, Decoration::Dot_Intersection, 2, Decoration::Dot, 3, Decoration::Gap, 2);
+	generator->generate(0x00037, Decoration::Dot, 5, Decoration::Gap, 3);
+
+	generator->generate(0x193A7, Decoration::Dot_Intersection, 6, Decoration::Triangle1, 5);
+	generator->generate(0x193AA, Decoration::Dot_Intersection, 6, Decoration::Triangle2, 5);
+	generator->generate(0x193AB, Decoration::Dot_Intersection, 6, Decoration::Triangle3, 5);
+	generator->generate(0x193A6, Decoration::Dot, 6, Decoration::Triangle, 5, Decoration::Gap, 2);
+
+	for (auto const id : monasteryPanels) {
+		memory->WritePanelData<int>(id, SEQUENCE_LEN, { 0 });
+		memory->WritePanelData<INT64>(id, SEQUENCE, { 0 });
+	}
+
+	for (auto const id : {0x193A7, 0x193AA, 0x193AB, 0x193A6 }) {
+		memory->WritePanelData<float>(id, PATH_COLOR, { 0.5f, 0.5f, 0.5f, 1.0f });
+		memory->WritePanelData<int>(id, SEQUENCE_LEN, { 0 });
+		memory->WritePanelData<INT64>(id, SEQUENCE, { 0 });
+		memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
+	}
+
+	memory->WritePanelData<uint64_t>(0x17CA4, MESH, memory->ReadPanelData<uint64_t>(0x00B10, MESH));
+	memory->WritePanelData<uint64_t>(0x17CA4, LIGHTMAP_TABLE, memory->ReadPanelData<uint64_t>(0x00B10, LIGHTMAP_TABLE));
+	memory->WritePanelData<float>(0x17CA4, SCALE, {1.6f});
+	memory->WritePanelData<float>(0x17CA4, PATTERN_SCALE, { 1.6f });
+	float path_width_scale = memory->ReadPanelData<float>(0x17CA4, PATH_WIDTH_SCALE);
+	memory->WritePanelData<float>(0x17CA4, PATTERN_SCALE, { 0.7f / path_width_scale });
+	ASMPayloadManager::get()->UpdateEntityPosition(0x17CA4);
+
+	int num_dots = memory->ReadPanelData<int>(0x28A0D, NUM_DOTS);
+
+	memory->WriteArray<float>(0x17CA4, DOT_POSITIONS, { memory->ReadArray<float>(0x28A0D, DOT_POSITIONS, num_dots * 2)}, true);
+	memory->WriteArray<float>(0x17CA4, DOT_FLAGS, { memory->ReadArray<float>(0x28A0D, DOT_FLAGS, num_dots) }, true);
+	memory->WritePanelData<int>(0x17CA4, NUM_DOTS, num_dots);
+
+	int num_connections = memory->ReadPanelData<int>(0x28A0D, NUM_CONNECTIONS);
+
+	memory->WriteArray<float>(0x17CA4, DOT_CONNECTION_A, { memory->ReadArray<float>(0x28A0D, DOT_CONNECTION_A, num_connections) }, true);
+	memory->WriteArray<float>(0x17CA4, DOT_CONNECTION_B, { memory->ReadArray<float>(0x28A0D, DOT_CONNECTION_B, num_connections) }, true);
+
+	memory->WritePanelData<int>(0x17CA4, GRID_SIZE_X, { memory->ReadPanelData<int>(0x28A0D, GRID_SIZE_X) });
+	memory->WritePanelData<int>(0x17CA4, GRID_SIZE_Y, { memory->ReadPanelData<int>(0x28A0D, GRID_SIZE_Y) });
+
+	memory->WritePanelData<float>(0x17CA4, PATH_COLOR, { 0.27f, 0.19f, 0.19f, 1.0f });
+
+	generator->setGridSize(6, 6);
+	generator->setSymbol(Decoration::Start, 0, 12);
+	generator->setSymbol(Decoration::Exit, 12, 0);
+	generator->generate(0x17CA4, Decoration::Dot, 10, Decoration::Triangle, 10, Decoration::Gap, 8);
 }
 
 void PuzzleList::GenerateShadowsN() {

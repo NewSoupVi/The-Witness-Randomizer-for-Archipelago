@@ -54,6 +54,7 @@ private:
 #define ORIENTATION 0x34
 #define BOUNDING_RADIUS 0x44
 #define MESH 0x60
+#define LIGHTMAP_TABLE 0x68
 #define PATH_COLOR 0xC0 
 #define REFLECTION_PATH_COLOR 0xD0 
 #define DOT_COLOR 0xF0 
