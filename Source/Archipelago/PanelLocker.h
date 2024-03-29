@@ -1,34 +1,31 @@
 #pragma once
 
-#include <vector>
 #include <map>
-#include "..\Randomizer.h"
-#include "..\Special.h"
-#include "..\StringSplitter.h"
-#include "PuzzleData.h"
-#include "APState.h"
+#include <set>
+#include <string>
+#include <set>
+#include <vector>
+
+class APState;
+struct LockablePuzzle;
 
 class PanelLocker {
 	public:
-		PanelLocker(std::shared_ptr<Memory> memory) {
-			_memory = memory;
-		};
-
-		void DisableNonRandomizedPuzzles(bool RiverShape);
+		void UpdatePPEPPuzzleLocks(const APState& state);
+		void DisableNonRandomizedPuzzles(std::set<int> exemptDoorPanels);
 		void UpdatePuzzleLock(const APState& state, const int& id);
 		void UpdatePuzzleLocks(const APState& state, const int& itemIndex);
-		void SetItemReward(const int& id, const APClient::NetworkItem& item, const bool& receiving, const std::string& receivingPlayer, const std::string& itemName);
+		bool PuzzleIsLocked(int id);
+		void PermanentlyUnlockPuzzle(int id, const APState& state);
+		void DisablePuzzle(int id);
+		std::vector<int> getAndFlushRecentlyUnlockedPuzzles();
 
 	private:
-		std::vector<int> disabledPuzzles;
-		std::map<int, PuzzleData*> lockedPuzzles;
-		std::shared_ptr<Memory> _memory;
+		std::vector<int> recentlyUnlockedPuzzles;
+		std::set<int> neverLockAgain;
+		std::set<int> disabledPuzzles;
+		std::map<int, LockablePuzzle*> lockedPuzzles;
 
-		void disablePuzzle(int id);
-		void addMissingSimbolsDisplay(std::vector<float>& newIntersections, std::vector<int>& newIntersectionFlags, std::vector<int>& newConnectionsA, std::vector<int>& newConnectionsB);
-		void createText(int id, std::string text, std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB, float left, float right, float top, float bottom);
-		void createCenteredText(int id, std::string text, std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB, float top, float bottom);
-		void addPuzzleSimbols(const APState& state, PuzzleData* puzzle, std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB, std::vector<int>& decorations, std::vector<int>& decorationsFlags, std::vector<int>& polygons);
-		void unlockPuzzle(PuzzleData* puzzle);
+		void unlockPuzzle(LockablePuzzle* puzzle, const APState& state);
 };
 
