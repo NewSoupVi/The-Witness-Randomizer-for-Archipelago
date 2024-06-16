@@ -672,6 +672,7 @@ void APRandomizer::PostGeneration() {
 
 	clientWindow->logLine("Firing Locationscout.");
 	ap->LocationScouts(allLocationsList);
+	ap->LocationScouts(allLocationsList, 2, 2);
 }
 
 void APRandomizer::HighContrastMode() {
