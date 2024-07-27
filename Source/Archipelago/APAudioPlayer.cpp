@@ -7,12 +7,17 @@
 #include "CanonicalAudioFileNames.h"
 #include "../Utilities.h"
 
+#include "../FMOD/AudioEngine.h"
+
 #include <iostream>
 #include <fstream>
 
 APAudioPlayer* APAudioPlayer::_singleton = nullptr;
 
 APAudioPlayer::APAudioPlayer() : Watchdog(0.1f) {
+	engine = new AudioEngine();
+	engine->init();
+
 	std::set<std::string> recognizedFiles = {};
 	for (auto [k, v] : canonicalAudioFileNames) {
 		for (std::string recognizedFile : v) {
@@ -47,6 +52,8 @@ APAudioPlayer::APAudioPlayer() : Watchdog(0.1f) {
 }
 
 void APAudioPlayer::action() {
+	engine->update();
+
 	if (!QueuedAudio.size()) return;
 
 	std::pair<APJingle, std::any> nextAudio = QueuedAudio.front();
@@ -88,16 +95,19 @@ void APAudioPlayer::PlayJingle(int resource, bool async) {
 		for (std::string possibility : possibilities) {
 			if (preloadedAudioFiles.contains(possibility)) {
 				char* buffer = preloadedAudioFiles[possibility];
-				if (async) PlaySoundA(buffer, NULL, SND_MEMORY | SND_ASYNC);
-				else PlaySoundA(buffer, NULL, SND_MEMORY);
+				
+				SoundInfo a = SoundInfo(buffer);
+				engine->loadSound(a);
+				engine->playSound(SoundInfo(a));
 
 				return;
 			}
 		}
 	}
 
-	if (async) PlaySound(MAKEINTRESOURCE(resource), NULL, SND_RESOURCE | SND_ASYNC);
-	else PlaySound(MAKEINTRESOURCEW(resource), NULL, SND_RESOURCE);
+	SoundInfo a = SoundInfo(SoundInfo(MAKEINTRESOURCEA(resource)));
+	engine->loadSound(a);
+	engine->playSound(SoundInfo(a));
 }
 
 void APAudioPlayer::PlayAppropriateJingle(APJingle jingle, std::any extraFlag, bool async) {

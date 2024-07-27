@@ -7,3 +7,6 @@
 [submodule "Source/Archipelago/Client/apclientpp"]
 	path = Source/Archipelago/Client/apclientpp
 	url = https://github.com/black-sliver/apclientpp.git
+[submodule "Source/FMOD-Audio-Engine"]
+	path = Source/FMOD
+	url = https://github.com/rosshoyt/FMOD-Audio-Engine.git

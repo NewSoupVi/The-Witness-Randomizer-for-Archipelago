@@ -99,6 +99,8 @@ inline const std::vector<int> entityHuntJingles = {
 	IDR_WAVE63, // 10
 };
 
+class AudioEngine;
+
 class APAudioPlayer : public Watchdog
 {
 private:
@@ -215,6 +217,7 @@ private:
 	};
 
 	std::mt19937 rng = std::mt19937(std::chrono::steady_clock::now().time_since_epoch().count());
+	AudioEngine* engine;
 
 public:
 
