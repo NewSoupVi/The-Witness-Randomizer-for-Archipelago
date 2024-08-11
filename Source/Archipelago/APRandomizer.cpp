@@ -108,9 +108,9 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			"Jungle",
 			"Outside Bunker",
 		};
-		if (!unlockableWarpsIsOn) {
-			UnlockableWarps = {};
-		}
+		// if (!unlockableWarpsIsOn) {
+			// UnlockableWarps = {};
+		// }
 
 		if (slotData.contains("panel_hunt_required_absolute")) RequiredHuntEntities = slotData["panel_hunt_required_absolute"];
 		PanelHuntPostgame = slotData.contains("panel_hunt_postgame") ? (int) slotData["panel_hunt_postgame"] : 0;
