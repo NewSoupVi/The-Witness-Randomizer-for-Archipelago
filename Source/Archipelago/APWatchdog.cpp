@@ -282,85 +282,83 @@ void APWatchdog::HandleInteractionState() {
 	}
 }
 
+bool APWatchdog::IsPanelSolved(int id, bool ensureSet) {
+	if (id == 0x09F7F) return ReadPanelData<float>(0x17C6C, CABLE_POWER) > 0.0f; // Short box
+	if (id == 0xFFF00) return ReadPanelData<float>(0x1800F, CABLE_POWER) > 0.0f; // Long box
+	if (id == 0xFFF80) return sentDog; // Dog
+	if (allEPs.count(id)) return ReadPanelData<int>(id, EP_SOLVED) > 0;
+	if (id == 0x17C34) return ReadPanelData<int>(0x2FAD4, DOOR_OPEN) && ReadPanelData<int>(0x2FAD6, DOOR_OPEN) && ReadPanelData<int>(0x2FAD7, DOOR_OPEN); // Mountain Entry
+	if (ensureSet) {
+		if (id == 0x09FD2) return ReadPanelData<int>(0x09FCD, CABLE_POWER) > 0.0f; // Multipanel
+		if (id == 0x034E3) return ReadPanelData<int>(0x034EB, CABLE_POWER) > 0.0f; // Sound Room
+		if (id == 0x014D1) return ReadPanelData<int>(0x00BED, CABLE_POWER) > 0.0f; // Red Underwater
+	}
+	return ReadPanelData<int>(id, SOLVED) == 1;
+}
+
+std::vector<int> APWatchdog::CheckCompletedHuntEntities() {
+	std::vector<int> completedHuntEntities = {};
+
+	for (auto [huntEntity, currentSolveStatus] : huntEntityToSolveStatus) {
+		if (!currentSolveStatus) {
+			if (IsPanelSolved(huntEntity, false)) {
+				huntEntityToSolveStatus[huntEntity] = true;
+				huntEntityKeepActive[huntEntity] = 7.0f;
+				completedHuntEntities.push_back(huntEntity);
+			}
+		}
+	}
+
+	if (completedHuntEntities.size()) {
+		int huntSolveTotal = 0;
+		for (auto [huntEntity, currentSolveStatus] : huntEntityToSolveStatus) {
+			if (currentSolveStatus) huntSolveTotal++;
+		}
+
+		state->solvedHuntEntities = huntSolveTotal;
+		panelLocker->UpdatePuzzleLock(*state, 0x03629);
+
+		HudManager::get()->queueNotification("Panel Hunt: " + std::to_string(huntSolveTotal) + "/" + std::to_string(state->requiredHuntEntities));
+	}
+
+	return completedHuntEntities;
+}
+
 void APWatchdog::CheckSolvedPanels() {
+	for (int id : recolorWhenSolved) {
+		if (!panelIdToLocationId_READ_ONLY.contains(id)) recolorWhenSolved.erase(id);
+		if (!IsPanelSolved(id, true)) continue;
+
+		if (FirstEverLocationCheckDone) {
+			PotentiallyColorPanel(panelIdToLocationId_READ_ONLY[id], true);
+			HudManager::get()->queueNotification("This location was previously collected.", { 0.7f, 0.7f, 0.7f });
+		}
+		recolorWhenSolved.erase(id);
+	}
+
 	std::list<int> solvedEntityIDs;
 	std::vector<int> completedHuntEntities = {};
 
-	if (finalPanel != 0x09F7F && finalPanel != 0xFFF00 && finalPanel != 0x03629 && ReadPanelData<int>(finalPanel, SOLVED) == 1 && !isCompleted) {
-		isCompleted = true;
-		HudManager::get()->queueBannerMessage("Victory!");
-		
-		if (timePassedSinceRandomisation > 10.0f) {
-			if (ClientWindow::get()->getJinglesSettingSafe() != "Off") APAudioPlayer::get()->PlayAudio(APJingle::Victory, APJingleBehavior::PlayImmediate);
-		}
-		ap->StatusUpdate(APClient::ClientStatus::GOAL);
-	}
-	if (finalPanel == 0x09F7F && !isCompleted)
-	{
-		float power = ReadPanelData<float>(0x17C6C, CABLE_POWER);
+	if (!isCompleted) {
+		if (finalPanel == 0x03629) {
+			completedHuntEntities = CheckCompletedHuntEntities();
 
-		if (power > 0.0f) {
+			std::vector<float> playerPosition = Memory::get()->ReadPlayerPosition();
+
+			if (EEEGate->containsPoint(playerPosition)) {
+				isCompleted = true;
+				eee = true;
+				HudManager::get()->queueBannerMessage("Victory!");
+				ap->StatusUpdate(APClient::ClientStatus::GOAL);
+			}
+		}
+		else if (IsPanelSolved(finalPanel, false)){
 			isCompleted = true;
 			HudManager::get()->queueBannerMessage("Victory!");
+
 			if (timePassedSinceRandomisation > 10.0f) {
 				if (ClientWindow::get()->getJinglesSettingSafe() != "Off") APAudioPlayer::get()->PlayAudio(APJingle::Victory, APJingleBehavior::PlayImmediate);
 			}
-			ap->StatusUpdate(APClient::ClientStatus::GOAL);
-		}
-	}
-	if (finalPanel == 0xFFF00 && !isCompleted)
-	{
-		float power = ReadPanelData<float>(0x1800F, CABLE_POWER);
-
-		if (power > 0.0f) {
-			isCompleted = true;
-			HudManager::get()->queueBannerMessage("Victory!");
-			if (timePassedSinceRandomisation > 10.0f) {
-				if (ClientWindow::get()->getJinglesSettingSafe() != "Off") APAudioPlayer::get()->PlayAudio(APJingle::Victory, APJingleBehavior::PlayImmediate);
-			}
-			ap->StatusUpdate(APClient::ClientStatus::GOAL);
-		}
-	}
-	if (finalPanel == 0x03629 && !isCompleted) {
-		bool done = true;
-
-		for (auto [huntEntity, currentSolveStatus] : huntEntityToSolveStatus) {
-			if (!currentSolveStatus) {
-				if (allPanels.count(huntEntity) && ReadPanelData<int>(huntEntity, SOLVED) == 1) {
-					huntEntityToSolveStatus[huntEntity] = true;
-					huntEntityKeepActive[huntEntity] = 7.0f;
-					completedHuntEntities.push_back(huntEntity);
-					continue;
-				}
-				else if (huntEntity == 0xFFF00 && ReadPanelData<float>(0x1800F, CABLE_POWER) > 0.0f) {
-					huntEntityToSolveStatus[huntEntity] = true;
-					huntEntityKeepActive[huntEntity] = 7.0f;
-					completedHuntEntities.push_back(huntEntity);
-					continue;
-				}
-
-				done = false;
-			}
-		}
-
-		if (completedHuntEntities.size()) {
-			int huntSolveTotal = 0;
-			for (auto [huntEntity, currentSolveStatus] : huntEntityToSolveStatus) {
-				if (currentSolveStatus) huntSolveTotal++;
-			}
-
-			state->solvedHuntEntities = huntSolveTotal;
-			panelLocker->UpdatePuzzleLock(*state, 0x03629);
-
-			HudManager::get()->queueNotification("Panel Hunt: " + std::to_string(huntSolveTotal) + "/" + std::to_string(state->requiredHuntEntities));
-		}
-
-		std::vector<float> playerPosition = Memory::get()->ReadPlayerPosition();
-
-		if (EEEGate->containsPoint(playerPosition)) {
-			isCompleted = true;
-			eee = true;
-			HudManager::get()->queueBannerMessage("Victory!");
 			ap->StatusUpdate(APClient::ClientStatus::GOAL);
 		}
 	}
@@ -368,22 +366,6 @@ void APWatchdog::CheckSolvedPanels() {
 	locationCheckInProgress = true;
 	for (auto [entityID, locationID] : panelIdToLocationId)
 	{
-		if (entityID == 0xFFF80) {
-			if(sentDog)
-			{
-				solvedEntityIDs.push_back(entityID);
-			}
-			continue;
-		}
-
-		if (allEPs.count(entityID)) {
-			if (ReadPanelData<int>(entityID, EP_SOLVED)) //TODO: Check EP solved
-			{
-				solvedEntityIDs.push_back(entityID);
-			}
-			continue;
-		}
-
 		if (obeliskHexToEPHexes.count(entityID)) {
 			std::set<int> EPSet = obeliskHexToEPHexes[entityID];
 
@@ -426,45 +408,7 @@ void APWatchdog::CheckSolvedPanels() {
 			continue;
 		}
 
-		if (entityID == 0x09FD2) {
-			int cableId = 0x09FCD;
-
-			if (ReadPanelData<int>(cableId, CABLE_POWER))
-			{
-				solvedEntityIDs.push_back(entityID);
-			}
-			continue;
-		}
-
-		if (entityID == 0x034E3) {
-			int cableId = 0x034EB;
-
-			if (ReadPanelData<int>(cableId, CABLE_POWER))
-			{
-				solvedEntityIDs.push_back(entityID);
-			}
-			continue;
-		}
-
-		if (entityID == 0x014D1) {
-			int cableId = 0x00BED;
-
-			if (ReadPanelData<int>(cableId, CABLE_POWER))
-			{
-				solvedEntityIDs.push_back(entityID);
-			}
-			continue;
-		}
-
-		if (entityID == 0x17C34) {
-			if (ReadPanelData<int>(0x2FAD4, DOOR_OPEN) && ReadPanelData<int>(0x2FAD6, DOOR_OPEN) && ReadPanelData<int>(0x2FAD7, DOOR_OPEN))
-			{
-				solvedEntityIDs.push_back(entityID);
-			}
-			continue;
-		}
-
-		else if (ReadPanelData<int>(entityID, SOLVED))
+		else if (IsPanelSolved(entityID, true))
 		{
 			solvedEntityIDs.push_back(entityID);
 		}
@@ -548,7 +492,11 @@ void APWatchdog::SkipPanel(int id, std::string reason, bool kickOut, int cost, b
 		}
 	}
 
-	if ((reason == "Collected" || reason == "Excluded") && Collect == "Unchanged") return;
+	if (reason == "Collected" && Collect == "Unchanged") {
+		if (!IsPanelSolved(id, false)) recolorWhenSolved.insert(id);
+		return;
+	}	
+	if (reason == "Excluded" && Collect == "Unchanged") return;
 	if (reason == "Disabled" && DisabledPuzzlesBehavior == "Unchanged") return;
 
 	if (reason != "Collected" && reason != "Excluded" || CollectUnlock) {
@@ -602,13 +550,16 @@ void APWatchdog::SkipPanel(int id, std::string reason, bool kickOut, int cost, b
 
 void APWatchdog::MarkLocationChecked(int64_t locationId)
 {
+	while (!FirstEverLocationCheckDone) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(10)));
+	}
 	checkedLocations.insert(locationId);
 
 	if (!locationIdToPanelId_READ_ONLY.count(locationId)) return;
 	int panelId = locationIdToPanelId_READ_ONLY[locationId];
 
 	if (allPanels.count(panelId)) {
-		if (!ReadPanelData<int>(panelId, SOLVED)) {
+		if (!IsPanelSolved(panelId, false)) {
 			if (PuzzlesSkippedThisGame.count(panelId)) {
 				while (locationCheckInProgress) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(10)));
@@ -2251,14 +2202,16 @@ void APWatchdog::setLocationItemFlag(int64_t location, unsigned int flags) {
 	PotentiallyColorPanel(location);
 }
 
-void APWatchdog::PotentiallyColorPanel(int64_t location) {
+void APWatchdog::PotentiallyColorPanel(int64_t location, bool overrideRecolor) {
 	if (!locationIdToPanelId_READ_ONLY.count(location)) return;
 	if (!checkedLocations.count(location)) return;
 	int panelId = locationIdToPanelId_READ_ONLY[location];
 
+	if (recolorWhenSolved.contains(panelId) && !overrideRecolor) return;
 	if (!allPanels.count(panelId) || PuzzlesSkippedThisGame.count(panelId)) return;
 	if (!locationIdToItemFlags.count(location)) return;
 
+	alreadyColored.insert(location);
 	APWatchdog::SetItemRewardColor(panelId, locationIdToItemFlags[location]);
 }
 
@@ -2410,7 +2363,11 @@ void APWatchdog::SetItemRewardColor(const int& id, const int& itemFlags) {
 	if (!allPanels.count(id)) return;
 
 	Color backgroundColor;
-	if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT){
+
+	if (recolorWhenSolved.contains(id)) {
+		backgroundColor = { 0.07f, 0.07f, 0.07f, 1.0f };
+	}
+	else if (itemFlags & APClient::ItemFlags::FLAG_ADVANCEMENT){
 		backgroundColor = { 0.686f, 0.6f, 0.937f, 1.0f };
 	}
 	else if (itemFlags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
@@ -2423,12 +2380,16 @@ void APWatchdog::SetItemRewardColor(const int& id, const int& itemFlags) {
 		backgroundColor = { 0.0f , 0.933f, 0.933f, 1.0f };
 	}
 
+	WriteRewardColorToPanel(id, backgroundColor);
+}
+
+void APWatchdog::WriteRewardColorToPanel(int id, Color color) {
 	if (id == 0x28998 || id == 0x28A69 || id == 0x17CAA || id == 0x00037 || id == 0x09FF8 || id == 0x09DAF || id == 0x0A01F || id == 0x17E67) {
-		WritePanelData<Color>(id, SUCCESS_COLOR_A, { backgroundColor });
+		WritePanelData<Color>(id, SUCCESS_COLOR_A, { color });
 	}
 	else
 	{
-		WritePanelData<Color>(id, BACKGROUND_REGION_COLOR, { backgroundColor });
+		WritePanelData<Color>(id, BACKGROUND_REGION_COLOR, { color });
 	}
 	WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
 }
