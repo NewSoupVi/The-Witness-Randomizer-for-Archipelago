@@ -246,7 +246,7 @@ void Memory::StopDesertLaserPropagation() {
 	});
 }
 
-void Memory::SetInfiniteChallenge(bool enable) {
+bool Memory::SetInfiniteChallenge(bool enable) {
 	if (_bytesLengthChallenge == 0) { //first time, find the music file in memory
 		char buffer[128];
 		std::string name = "peer_gynt";
@@ -322,6 +322,11 @@ void Memory::SetInfiniteChallenge(bool enable) {
 		ReadProcessMemory(_handle, reinterpret_cast<LPCVOID>(returnAddress), sound_object, 8, &numBytesWritten);
 
 		_bytesLengthChallenge = sound_object[0] + 0x28;
+
+		if (_bytesLengthChallenge == 0x28) {
+			_bytesLengthChallenge = 0x00;
+			return false;
+		}
 	}
 
 	if (enable) {
@@ -346,12 +351,14 @@ void Memory::SetInfiniteChallenge(bool enable) {
 
 		WriteProcessMemory(_handle, addressPointer, asmBuff, sizeof(asmBuff) - 1, NULL);
 
-		char asmBuff2[] = "\x67\xB1\x26"; // Length of song to original length
+		int originallength = 0x67B126; // Length of song to original length
 
 		LPVOID addressPointer2 = reinterpret_cast<LPVOID>(_bytesLengthChallenge);
 
-		WriteProcessMemory(_handle, addressPointer2, asmBuff2, sizeof(asmBuff2) - 1, NULL);
+		WriteProcessMemory(_handle, addressPointer2, &originallength, sizeof(int), NULL);
 	}
+
+	return true;
 }
 
 void Memory::ForceStopChallenge()

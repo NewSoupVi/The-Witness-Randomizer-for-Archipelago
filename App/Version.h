@@ -7,7 +7,7 @@
 #define MINOR 0
 #define PATCH 0
 
-#define VERSION_STR     "Warps Beta 4"
+#define VERSION_STR     "Warps Beta 6"
 #define VERSION			MAJOR, MINOR, PATCH
 
 #define AP_VERSION_STR	"0.5.1"

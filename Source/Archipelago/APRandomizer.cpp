@@ -586,6 +586,29 @@ void APRandomizer::PostGeneration() {
 		memory->PowerGauge(0x003C4, 0x3F, 3);
 		memory->PowerGauge(0x003C4, 0x3C, 2);
 		memory->PowerGauge(0x003C4, 0x51, 1);
+
+		memory->WritePanelData(0x3F, MOUNT_PARENT_ID, 0);
+		memory->WritePanelData(0x3F, SCALE, 0.0f);
+		memory->WritePanelData(0x3C, MOUNT_PARENT_ID, 0);
+		memory->WritePanelData(0x3C, SCALE, 0.0f);
+		memory->WritePanelData(0x51, MOUNT_PARENT_ID, 0);
+		memory->WritePanelData(0x51, SCALE, 0.0f);
+
+		ASMPayloadManager::get()->UpdateEntityPosition(0x3F);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x3C);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x51);
+
+		// Make this obviously unsolvable to the bottom //
+		Panel panel = Panel(0x0A3B5);
+		std::vector<Endpoint> newEndpoints = {};
+		for (auto endpoint : panel._endpoints) {
+			if (endpoint.GetY() < 3) {
+				newEndpoints.push_back(endpoint);
+			}
+		}
+		panel._endpoints = newEndpoints;
+		panel.Write();
+		Special::setTarget(0x0A3B5, 0x3BA7);
 	}
 
 	// Write gameplay relevant client options into datastorage
@@ -657,7 +680,6 @@ void APRandomizer::PostGeneration() {
 	if (FinalPanel == 0x03629) {
 		Special::writeGoalCondition(0x0042D, " Goal:", "Panel Hunt", " Lasers:", MountainLasers, ChallengeLasers);
 		Special::DrawSingleVerticalLine(0x03629);
-		memory->WritePanelData<float>(0x03629, MAX_BROADCAST_DISTANCE, -1);
 		Special::DrawSingleVerticalLine(0x03505);
 	}
 	else if (FinalPanel == 0x09F7F) {
