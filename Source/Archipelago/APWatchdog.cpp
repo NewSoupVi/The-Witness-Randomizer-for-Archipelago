@@ -288,6 +288,7 @@ bool APWatchdog::IsPanelSolved(int id, bool ensureSet) {
 	if (id == 0xFFF80) return sentDog; // Dog
 	if (allEPs.count(id)) return ReadPanelData<int>(id, EP_SOLVED) > 0;
 	if (id == 0x17C34) return ReadPanelData<int>(0x2FAD4, DOOR_OPEN) && ReadPanelData<int>(0x2FAD6, DOOR_OPEN) && ReadPanelData<int>(0x2FAD7, DOOR_OPEN); // Mountain Entry
+	if (id == 0x079DF) return ReadPanelData<float>(0x034F1, CABLE_POWER) > 0.0f; // Town Triple
 	if (ensureSet) {
 		if (id == 0x09FD2) return ReadPanelData<int>(0x09FCD, CABLE_POWER) > 0.0f; // Multipanel
 		if (id == 0x034E3) return ReadPanelData<int>(0x034EB, CABLE_POWER) > 0.0f; // Sound Room
@@ -343,7 +344,24 @@ void APWatchdog::CheckSolvedPanels() {
 		if (finalPanel == 0x03629) {
 			completedHuntEntities = CheckCompletedHuntEntities();
 
+			if (!eee && ReadPanelData<float>(0x338A4, POSITION + 8) < 45) { // Some random audio log that changes Z position when EEE happens
+				eee = true;
+
+				InputWatchdog* inputWatchdog = InputWatchdog::get();
+				InteractionState iState = inputWatchdog->getInteractionState();
+
+				if (isKnockedOut) {
+					return;
+				}
+
+				if (iState == InteractionState::Sleeping) {
+					inputWatchdog->setSleep(false);
+				}
+			}
+
 			std::vector<float> playerPosition = Memory::get()->ReadPlayerPosition();
+			if (playerPosition[2] > 8) Memory::get()->WritePanelData<float>(0x03629, MAX_BROADCAST_DISTANCE, 0.0001f);
+			else Memory::get()->WritePanelData<float>(0x03629, MAX_BROADCAST_DISTANCE, 24.f);
 
 			if (EEEGate->containsPoint(playerPosition)) {
 				isCompleted = true;
@@ -682,7 +700,7 @@ void APWatchdog::HandlePowerSurge() {
 
 				if (powerValues[1] > 0) {
 					//using -20f as offset to create a unique recogniseable value that is also stored in the save
-					WritePanelData<float>(panelId, POWER, { -20.0f + powerValues[0], -20.0f + powerValues[1] }, movingMemoryPanels.count(panelId));
+					WritePanelData<float>(panelId, POWER, { -19.0f, -19.0f }, movingMemoryPanels.count(panelId));
 				}
 			}
 		}
@@ -691,23 +709,32 @@ void APWatchdog::HandlePowerSurge() {
 
 void APWatchdog::ResetPowerSurge() {
 	hasPowerSurge = false;
+	bool weirdStuff = false;
 
 	for (const auto& panelId : allPanels) {
-		std::vector<float> powerValues = ReadPanelData<float>(panelId, POWER, 2);
+		std::vector<float> powerValues = ReadPanelData<float>(panelId, POWER, 2, movingMemoryPanels.count(panelId));
 
-		if (powerValues[0] < -18.0f && powerValues[0] > -22.0f && powerValues[1] < -18.0f && powerValues[1] > -22.0f)
+		if (powerValues[1] < -18.0f && powerValues[1] > -22.0f)
 		{
-			powerValues[0] -= -20.0f;
 			powerValues[1] -= -20.0f;
+			powerValues[0] = powerValues[1];
 
-			WritePanelData<float>(panelId, POWER, powerValues);
-			WritePanelData<float>(panelId, NEEDS_REDRAW, { 1 });
+			WritePanelData<float>(panelId, POWER, powerValues, movingMemoryPanels.count(panelId));
+			WritePanelData<float>(panelId, NEEDS_REDRAW, { 1 }, movingMemoryPanels.count(panelId));
 		}
+		else if (powerValues[0] < 0) {
+			weirdStuff = true;
+			WritePanelData<float>(panelId, POWER, { 1.0f, 1.0f }, movingMemoryPanels.count(panelId));
+		}
+	}
+
+	if (weirdStuff) {
+		HudManager::get()->queueBannerMessage("Something strange happened when trying to reset a power surge.");
 	}
 }
 
 void APWatchdog::TriggerBonk() {
-	if (eee) return;
+	if (eee && isCompleted) return;
 
 	if (ClientWindow::get()->getJinglesSettingSafe() != "Off") APAudioPlayer::get()->PlayAudio(APJingle::DeathLink, APJingleBehavior::PlayImmediate);
 
@@ -3035,7 +3062,7 @@ void APWatchdog::LookingAtLockedEntity() {
 		float t = v * cameraDirection;
 
 		// not facing it enough (camera)
-		if (t < 0.35) continue;
+		if (t < 0.35 && !omniDirectionalEntities.count(doorID)) continue;
 
 		candidateEntities.insert(doorID);
 	}
@@ -3740,8 +3767,8 @@ void APWatchdog::ToggleSleep() {
 	InputWatchdog* inputWatchdog = InputWatchdog::get();
 	InteractionState iState = inputWatchdog->getInteractionState();
 
-	if (isKnockedOut || iState == InteractionState::Cutscene) {
-		HudManager::get()->queueBannerMessage("Can't go into sleep mode right now.");
+	if (isKnockedOut || iState == InteractionState::Cutscene || eee) {
+		HudManager::get()->displayBannerMessageIfQueueEmpty("Can't go into sleep mode right now.");
 		return;
 	}
 	if (iState == InteractionState::Warping) return;
@@ -3760,6 +3787,9 @@ void APWatchdog::TryWarp() {
 
 	if (iState != InteractionState::Sleeping) return;
 	if (selectedWarp == NULL) return;
+	if (eee) {
+		return;
+	}
 
 	if (selectedWarp->tutorial) {
 		ASMPayloadManager::get()->ActivateMarker(0x034F6);
