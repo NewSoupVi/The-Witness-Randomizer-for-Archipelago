@@ -192,6 +192,7 @@
     <ClInclude Include="Archipelago\SkipSpecialCases.h" />
     <ClInclude Include="ASMBuilder.h" />
     <ClInclude Include="ClientWindow.h" />
+    <ClInclude Include="Colorblind.h" />
     <ClInclude Include="Converty.h" />
     <ClInclude Include="DataTypes.h" />
     <ClInclude Include="DateTime.h" />
@@ -228,6 +229,7 @@
     <ClCompile Include="Archipelago\PanelRestore.cpp" />
     <ClCompile Include="ASMBuilder.cpp" />
     <ClCompile Include="ClientWindow.cpp" />
+    <ClCompile Include="Colorblind.cpp" />
     <ClCompile Include="DataTypes.cpp" />
     <ClCompile Include="Generate.cpp" />
     <ClCompile Include="HUDManager.cpp" />

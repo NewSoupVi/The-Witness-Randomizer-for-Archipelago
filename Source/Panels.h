@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <set>
 
 // Some of these (the puzzle ones) are duplicated elsewhere
 inline std::vector<int> lasers = {

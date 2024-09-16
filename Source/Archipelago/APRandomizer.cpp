@@ -20,6 +20,7 @@
 #include "../Utilities.h"
 #include "SkipSpecialCases.h"
 #include "APAudioPlayer.h"
+#include "../Colorblind.h"
 
 APRandomizer::APRandomizer() {
 	panelLocker = new PanelLocker();
@@ -642,6 +643,11 @@ void APRandomizer::PostGeneration() {
 		for (int panel : door_timers) {
 			Special::flipPanelHorizontally(panel);
 		}
+	}
+
+	if (clientWindow->getSetting(ClientToggleSetting::ColorblindMode)) {
+		clientWindow->logLine("Applying colorblind mode...");
+		ColorblindMode::makePanelsColorblindFriendly();
 	}
 
 	clientWindow->logLine("Making postgeneration game modifications.");
