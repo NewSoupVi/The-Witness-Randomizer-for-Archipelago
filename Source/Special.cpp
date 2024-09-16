@@ -2423,4 +2423,63 @@ void Special::flipPanelHorizontally(int id) {
 	memory->WriteArray<float>(id, DOT_POSITIONS, intersections);
 }
 
+int Special::SquareIsWhiteBlackOrColored(int id, std::vector<int> decorations, std::vector<float> decorationColors, int i) {
+	Memory* memory = Memory::get();
+	
+	if (!decorationColors.empty()) {
+		std::vector<float> color = { decorationColors[4 * i], decorationColors[4 * i + 1], decorationColors[4 * i + 2], decorationColors[4 * i + 3] };
+
+		if (color[0] == color[1] && color[1] == color[2]) {
+			if (color[0] > 0.5f) return 0;
+			return 1;
+		}
+		else {
+			return 2;
+		}
+	}
+	else if (memory->ReadPanelData<int>(id, PUSH_SYMBOL_COLORS) == 1) { // Quarry type: Symbol_A through Symbol_E are relevant
+		std::vector<float> color;
+		switch (decorations[i] & 0x00F) {
+		case 1:
+			color = memory->ReadPanelData<float>(id, SYMBOL_A, 3);
+			break;
+		case 2:
+			color = memory->ReadPanelData<float>(id, SYMBOL_B, 3);
+			break;
+		case 3:
+			color = { 0.0f, 1.0f, 1.0f };
+			break;
+		case 4:
+			color = memory->ReadPanelData<float>(id, SYMBOL_C, 3);
+			break;
+		case 5:
+			color = memory->ReadPanelData<float>(id, SYMBOL_D, 3);
+			break;
+		case 6:
+			color = memory->ReadPanelData<float>(id, SYMBOL_E, 3);
+			break;
+		default:
+			color = { 0.0f, 1.0f, 1.0f };
+		}
+
+		if (color[0] == color[1] && color[1] == color[2] || (color[0] < 0.035 && color[1] < 0.05 && color[2] < 0.065)) { // vanilla left pillar 2 lol
+			if (color[0] == color[1] && color[1] == color[2]) {
+				if (color[0] > 0.5f) return 0;
+				return 1;
+			}
+		}
+		else {
+			return 2;
+		}
+	}
+	else {
+		if ((decorations[i] & 0x00F) == Decoration::Color::White)
+			return 0;
+		else if ((decorations[i] & 0x00F) == Decoration::Color::Black)
+			return 1;
+		else
+			return 2;
+	}
+}
+
 std::map<int, int> Special::correctShapesById = {};

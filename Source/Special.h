@@ -142,6 +142,8 @@ public:
 	static void swapStartAndEnd(int id);
 	static void flipPanelHorizontally(int id);
 
+	static int SquareIsWhiteBlackOrColored(int id, std::vector<int> decorations, std::vector<float> decorationColors, int index);
+
 	static void testSwap(int id1, int id2) {
 		Memory* memory = Memory::get();
 		std::vector<byte> bytes1 = memory->ReadPanelData<byte>(id1, 0, 0x600);

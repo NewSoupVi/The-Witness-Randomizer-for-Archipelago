@@ -512,54 +512,10 @@ void LockablePanel::Read() {
 
 	for (int i = 0; i < numberOfDecorations; i++) {
 		if ((decorations[i] & 0x700) == Decoration::Shape::Stone) {
-			if (decorationsColorsPointer) {
-				std::vector<float> color = { decorationColors[4 * i], decorationColors[4 * i + 1], decorationColors[4 * i + 2], decorationColors[4 * i + 3] };
+			int white_black_or_colored = Special::SquareIsWhiteBlackOrColored(id, decorations, decorationColors, i);
 
-				if (color[0] == color[1] && color[1] == color[2]) {
-					hasStones = true;
-				}
-				else {
-					hasColoredStones = true;
-				}
-			}
-			else if (memory->ReadPanelData<int>(id, PUSH_SYMBOL_COLORS) == 1) { // Quarry type: Symbol_A through Symbol_E are relevant
-				std::vector<float> color;
-				switch (decorations[i] & 0x00F) {
-				case 1:
-					color = memory->ReadPanelData<float>(id, SYMBOL_A, 3);
-					break;
-				case 2:
-					color = memory->ReadPanelData<float>(id, SYMBOL_B, 3);
-					break;
-				case 3:
-					color = { 0.0f, 1.0f, 1.0f };
-					break;
-				case 4:
-					color = memory->ReadPanelData<float>(id, SYMBOL_C, 3);
-					break;
-				case 5:
-					color = memory->ReadPanelData<float>(id, SYMBOL_D, 3);
-					break;
-				case 6:
-					color = memory->ReadPanelData<float>(id, SYMBOL_E, 3);
-					break;
-				default:
-					color = { 0.0f, 1.0f, 1.0f };
-				}
-
-				if (color[0] == color[1] && color[1] == color[2] || (color[0] < 0.035 && color[1] < 0.05 && color[2] < 0.065)) { // vanilla left pillar 2 lol
-					hasStones = true;
-				}
-				else {
-					hasColoredStones = true;
-				}
-			}
-			else {
-				if ((decorations[i] & 0x00F) != Decoration::Color::White && (decorations[i] & 0x00F) != Decoration::Color::Black)
-					hasColoredStones = true;
-				else
-					hasStones = true;
-			}
+			if (white_black_or_colored == 2) hasColoredStones = true;
+			else hasStones = true;
 		}
 		else if ((decorations[i] & 0xF00) == Decoration::Shape::Star) {
 			hasStars = true;

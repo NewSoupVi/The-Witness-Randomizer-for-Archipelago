@@ -328,7 +328,7 @@ std::vector<int> APWatchdog::CheckCompletedHuntEntities() {
 void APWatchdog::CheckSolvedPanels() {
 	std::vector<int> toRemove = {};
 	for (int id : recolorWhenSolved) {
-		if (!panelIdToLocationId_READ_ONLY.contains(id)) recolorWhenSolved.erase(id);
+		if (!panelIdToLocationId_READ_ONLY.contains(id)) toRemove.push_back(id);
 		if (!IsPanelSolved(id, true)) continue;
 
 		if (FirstEverLocationCheckDone) {

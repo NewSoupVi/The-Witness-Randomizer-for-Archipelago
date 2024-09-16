@@ -566,7 +566,17 @@ void APRandomizer::PostGeneration() {
 	ClientWindow* clientWindow = ClientWindow::get();
 	Memory* memory = Memory::get();
 
+	if (clientWindow->getSetting(ClientToggleSetting::ColorblindMode)) {
+		clientWindow->logLine("Applying colorblind mode...");
+		ColorblindMode::makePanelsColorblindFriendly();
+	}
+	else if (clientWindow->getSetting(ClientToggleSetting::HighContrast)) {
+		clientWindow->logLine("Setting up High Contrast Mode.");
+		HighContrastMode();
+	}
+
 	if (huntEntities.size()) { // Panelhunt mode -> Tutorial Gate Open is repurposed
+		clientWindow->logLine("Setting up Tutorial changes in panel hunt.");
 		Memory::get()->PowerNext(0x03629, 0x36);
 
 		if (!memory->ReadPanelData<int>(0x288E8, 0x1E4))
@@ -643,11 +653,6 @@ void APRandomizer::PostGeneration() {
 		for (int panel : door_timers) {
 			Special::flipPanelHorizontally(panel);
 		}
-	}
-
-	if (clientWindow->getSetting(ClientToggleSetting::ColorblindMode)) {
-		clientWindow->logLine("Applying colorblind mode...");
-		ColorblindMode::makePanelsColorblindFriendly();
 	}
 
 	clientWindow->logLine("Making postgeneration game modifications.");

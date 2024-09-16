@@ -20,6 +20,10 @@ struct RgbColor {
 			((int)(B * 255.5));
 	}
 
+	friend bool operator==(const RgbColor& lhs, const RgbColor& rhs) {
+		return lhs.R == rhs.R && lhs.G == rhs.G && lhs.B == rhs.B && lhs.A == rhs.A;
+	}
+
 	static RgbColor lerpHSV(RgbColor a, RgbColor b, float t);
 };
 

@@ -290,11 +290,6 @@ void Main::randomize() {
 	memory->WritePanelData(0x00064, VIDEO_STATUS_COLOR + 8, seed);
 	memory->WritePanelData(0x00182, VIDEO_STATUS_COLOR + 8, puzzleRando);
 
-	if (clientWindow->getSetting(ClientToggleSetting::HighContrast)) {
-		clientWindow->logLine("Setting up High Contrast Mode.");
-		apRandomizer->HighContrastMode();
-	}
-
 	clientWindow->logLine("Start PostGeneration.");
 	apRandomizer->PostGeneration();
 
