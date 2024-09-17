@@ -348,8 +348,8 @@ void ColorblindMode::makeTownChurchColorblindFriendly(std::vector<int> classes, 
 
 	std::vector<RgbColor> colors = {
 		{0.0f, 0.0f, 0.0f},
-		{1.0f, 1.0f, 0.2f},
-		{0.4f, 0.4f, 0.4f},
+		{1.0f, 1.0f, 0.4f},
+		{0.4f, 0.4f, 0.0f},
 	};
 
 	std::map<int, RgbColor> baseColorsByClass = {};
