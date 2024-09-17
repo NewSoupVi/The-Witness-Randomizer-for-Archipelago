@@ -232,11 +232,17 @@ std::map<int, RgbColor> ColorblindMode::chooseNewColors(int id, std::vector<int>
 			RgbColor idealColor = RgbColor(0.0f, 0.0f, 1.0f);
 			RgbColor closestColor = usableColors[0];
 			float bestDistance = 1897598127;
-			for (RgbColor possibleColor : usableColors) {
+
+			for (int i = 0; i < usableColors.size(); i++) {
+				RgbColor possibleColor = usableColors[i];
 				if (std::find(usedColors.begin(), usedColors.end(), possibleColor) != usedColors.end()) continue;
-				if (possibleColor.R == possibleColor.G && possibleColor.G == possibleColor.B && colored_square_classes.contains(class_number)) continue;
 
 				float newDistance = (Vector3(idealColor.R, idealColor.B, idealColor.G) - Vector3(possibleColor.R, possibleColor.B, possibleColor.G)).length();
+				
+				if (possibleColor.R == possibleColor.G && possibleColor.G == possibleColor.B && colored_square_classes.contains(class_number)) newDistance = 1.0f;
+
+				newDistance += i * 0.1f;
+				
 				if (newDistance < bestDistance) {
 					bestDistance = newDistance;
 					closestColor = possibleColor;
@@ -256,11 +262,16 @@ std::map<int, RgbColor> ColorblindMode::chooseNewColors(int id, std::vector<int>
 			RgbColor idealColor = RgbColor(1.0f, 0.84f, 0.0f);
 			RgbColor closestColor = usableColors[0];
 			float bestDistance = 1897598127;
-			for (RgbColor possibleColor : usableColors) {
+			for (int i = 0; i < usableColors.size(); i++) {
+				RgbColor possibleColor = usableColors[i];
 				if (std::find(usedColors.begin(), usedColors.end(), possibleColor) != usedColors.end()) continue;
-				if (possibleColor.R == possibleColor.G && possibleColor.G == possibleColor.B && colored_square_classes.contains(class_number)) continue;
 
 				float newDistance = (Vector3(idealColor.R, idealColor.B, idealColor.G) - Vector3(possibleColor.R, possibleColor.B, possibleColor.G)).length();
+
+				if (possibleColor.R == possibleColor.G && possibleColor.G == possibleColor.B && colored_square_classes.contains(class_number)) newDistance = 1.0f;
+
+				newDistance += i * 0.1f;
+
 				if (newDistance < bestDistance) {
 					bestDistance = newDistance;
 					closestColor = possibleColor;
@@ -275,11 +286,16 @@ std::map<int, RgbColor> ColorblindMode::chooseNewColors(int id, std::vector<int>
 			RgbColor idealColor = RgbColor(1.0f, 0.65f, 0.0f);
 			RgbColor closestColor = usableColors[0];
 			float bestDistance = 1897598127;
-			for (RgbColor possibleColor : usableColors) {
+			for (int i = 0; i < usableColors.size(); i++) {
+				RgbColor possibleColor = usableColors[i];
 				if (std::find(usedColors.begin(), usedColors.end(), possibleColor) != usedColors.end()) continue;
-				if (possibleColor.R == possibleColor.G && possibleColor.G == possibleColor.B && colored_square_classes.contains(class_number)) continue;
 
 				float newDistance = (Vector3(idealColor.R, idealColor.B, idealColor.G) - Vector3(possibleColor.R, possibleColor.B, possibleColor.G)).length();
+
+				if (possibleColor.R == possibleColor.G && possibleColor.G == possibleColor.B && colored_square_classes.contains(class_number)) newDistance = 1.0f;
+
+				newDistance += i * 0.1f;
+
 				if (newDistance < bestDistance) {
 					bestDistance = newDistance;
 					closestColor = possibleColor;
@@ -308,6 +324,62 @@ std::map<int, RgbColor> ColorblindMode::chooseNewColors(int id, std::vector<int>
 	return newColorsByClass;
 }
 
+void ColorblindMode::makeTownChurchColorblindFriendly(std::vector<int> classes, std::vector<int> classes_sorted_by_count) {
+	Memory* memory = Memory::get();
+
+	std::vector<float> decorationColors = memory->ReadArray<float>(0x28A0D, DECORATION_COLORS, 4 * classes.size());
+
+	std::map<int, RgbColor> bluerColorByClass = {};
+	
+	for (int i = 0; i < classes.size(); i++) {
+		int class_number = classes[i];
+		if (class_number == -1) continue;
+
+		RgbColor color = RgbColor(decorationColors[4 * i], decorationColors[4 * i + 1], decorationColors[4 * i + 2], decorationColors[4 * i + 3]);
+
+		if (!bluerColorByClass.contains(class_number)) {
+			bluerColorByClass[class_number] = color;
+		}
+		
+		if (bluerColorByClass[class_number].B < color.B) {
+			bluerColorByClass[class_number] = color;
+		}
+	}
+
+	std::vector<RgbColor> colors = {
+		{0.0f, 0.0f, 0.0f},
+		{1.0f, 1.0f, 0.2f},
+		{0.4f, 0.4f, 0.4f},
+	};
+
+	std::map<int, RgbColor> baseColorsByClass = {};
+	for (int i = 0; i < classes_sorted_by_count.size(); i++) {
+		int class_number = classes_sorted_by_count[i];
+		baseColorsByClass[class_number] = colors[i];
+	}
+
+	std::vector<float> newDecorationColors = decorationColors;
+
+	for (int i = 0; i < classes.size(); i++) {
+		int class_number = classes[i];
+
+		if (class_number == -1) continue;
+
+		RgbColor currentColor = RgbColor(decorationColors[4 * i], decorationColors[4 * i + 1], decorationColors[4 * i + 2], decorationColors[4 * i + 3]);
+
+		RgbColor newColor = baseColorsByClass[class_number];
+
+		newDecorationColors[4 * i] = newColor.R;
+		newDecorationColors[4 * i + 1] = newColor.G;
+		newDecorationColors[4 * i + 2] = newColor.B;
+		newDecorationColors[4 * i + 3] = newColor.A;
+
+		if (currentColor == bluerColorByClass[class_number]) newDecorationColors[4 * i + 2] += 0.6f;
+	}
+
+	memory->WriteArray<float>(0x28A0D, DECORATION_COLORS, newDecorationColors);
+}
+
 void ColorblindMode::makePanelColorblindFriendly(int id) {
 	Memory* memory = Memory::get();
 
@@ -316,11 +388,17 @@ void ColorblindMode::makePanelColorblindFriendly(int id) {
 	std::vector<int> classes = getClasses(decorations);
 	std::vector<int> classes_sorted_by_count = sortClassesByCount(classes);
 
-	if (classes_sorted_by_count.size() <= 1 && !notThatBadSwampPanels.contains(id) && !swampLowContrastPanels.contains(id)) return;
+	if (classes_sorted_by_count.size() == 0 && !notThatBadSwampPanels.contains(id) && !swampLowContrastPanels.contains(id)) return;
 
-	memory->WritePanelData<float>(id, OUTER_BACKGROUND, { 0.29f, 0.29f, 0.29f, 1.0f });
+	if (id == 0x28A0D) {
+		makeTownChurchColorblindFriendly(classes, classes_sorted_by_count);
+		memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
+		return;
+	}
+
+	memory->WritePanelData<float>(id, OUTER_BACKGROUND, { 0.29f, 0.29f, 0.29f });
 	memory->WritePanelData<float>(id, PATH_COLOR, { 0.17f, 0.17f, 0.17f, 1.0f });
-	memory->WritePanelData<float>(id, BACKGROUND_REGION_COLOR, { 0.33f, 0.33f, 0.33f, 1.0f });
+	memory->WritePanelData<float>(id, BACKGROUND_REGION_COLOR, { 0.32f, 0.32f, 0.32f });
 
 	std::set<int> classesContainingTriangles = getClassesContainingTriangles(decorations, classes);
 
@@ -329,4 +407,5 @@ void ColorblindMode::makePanelColorblindFriendly(int id) {
 	std::map<int, RgbColor> newColorsByClass = chooseNewColors(id, decorations, classes, classes_sorted_by_count, usableColors);
 
 	writeColors(id, decorations, classes, newColorsByClass, classesContainingTriangles);
+	memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
 }

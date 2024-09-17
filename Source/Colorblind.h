@@ -13,5 +13,6 @@ public:
 	static void writeColors(int id, std::vector<int> classes, std::vector<int> decorations, std::map<int, RgbColor> newColorsByClass, std::set<int> classesContainingTriangles);
 	static std::set<int> getClassesContainingTriangles(std::vector<int> decorations, std::vector<int> classes);
 	static std::map<int, RgbColor> chooseNewColors(int id, std::vector<int> decorations, std::vector<int> classes, std::vector<int> classes_sorted_by_count, std::vector<RgbColor> usableColors);
+	static void makeTownChurchColorblindFriendly(std::vector<int> classes, std::vector<int> classes_sorted_by_count);
 	static void makePanelColorblindFriendly(int id);
 };

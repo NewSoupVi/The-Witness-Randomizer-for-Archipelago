@@ -89,6 +89,7 @@ public:
 	void GenerateTrianglePanelsH();
 	void GenerateMountainH();
 	void GenerateCavesH();
+	void GenerateAlternateColorblindPuzzlesH();
 
 	//Environmental areas - unless I can figure out how to mess with the game's assets, randomizing some of these puzzles isn't happening anytime soon
 	void GenerateOrchardH();

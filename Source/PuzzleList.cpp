@@ -100,6 +100,7 @@ void PuzzleList::GenerateAllH()
 	GenerateJungleH();
 	GenerateMountainH();
 	GenerateCavesH();
+	if (colorblind)	GenerateAlternateColorblindPuzzlesH();
 	ClientWindow::get()->setStatusMessage("Generation complete!");
 	//GenerateShadowsH(); //Can't randomize
 	//GenerateMonasteryH(); //Can't randomize
@@ -2289,6 +2290,11 @@ void PuzzleList::GenerateCavesH()
 	generator->generate(0x039B4, Decoration::Arrow2, 12);
 	//Town Exit
 	generator->generate(0x09E85, Decoration::Arrow, 16, Decoration::Start, 4, Decoration::Exit, 1);
+}
+
+void PuzzleList::GenerateAlternateColorblindPuzzlesH() {
+	specialCase->generateColorFilterPuzzle(0x28A0D, { 5, 5 }, { std::make_pair<int, int>(Decoration::Star | 1, 8),
+	std::make_pair<int,int>(Decoration::Star | 2, 6), std::make_pair<int,int>(Decoration::Star | 3, 6) }, { 1, 1, 0, 0 }, false);
 }
 
 void PuzzleList::GenerateOrchardH()
