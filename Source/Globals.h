@@ -11,5 +11,5 @@ public:
 	static void create();
 	static Globals* get();
 
-	bool independentColoredDots = false;
+	bool independentSecondStageSymbols = false;
 };

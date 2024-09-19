@@ -29,6 +29,7 @@
 #include <Archipelago/APGameData.h>
 #include <Archipelago/ASMPayloadManager.h>
 #include <HUDManager.h>
+#include <Globals.h>
 
 
 #define IDC_RANDOMIZE 0x401
@@ -467,6 +468,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 	//Initialize memory globals constant depending on game version
 	Memory::create();
+	Globals::create();
 	Memory* memory = memory->get();
 	
 	InputWatchdog::initialize();
