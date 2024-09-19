@@ -641,7 +641,7 @@ void LockablePanel::Read() {
 	{
 		hasDots = false;
 		hasColoredDots = true;
-		hasSymmetry = !Globals::get()->independentColoredDots;
+		hasSymmetry = !Globals::get()->independentSecondStageSymbols;
 	}
 	else if (id == 0x15ADD) { // River Vault: The squares are drawn on and validated separately!
 		hasStones = true;
@@ -670,6 +670,11 @@ void LockablePanel::Read() {
 	else if (id == 0x09F7D || id == 0x09D9F || id == 0x09DA1 || id == 0x09DA2 || id == 0x09DAF || id == 0x0A010 || id == 0x17E63) {
 		hasColoredStones = true;
 		hasStones = false;
+	}
+
+	if (Globals::get()->independentSecondStageSymbols) {
+		if (hasStarsWithOtherSymbol) hasStars = false;
+		if (hasFullDots) hasDots = false;
 	}
 }
 
