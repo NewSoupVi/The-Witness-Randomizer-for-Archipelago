@@ -13,3 +13,4 @@ void Globals::create() {
 
 Globals* Globals::get() {
 	return _singleton;
+}

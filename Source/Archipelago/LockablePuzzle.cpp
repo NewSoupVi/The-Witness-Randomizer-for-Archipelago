@@ -14,7 +14,7 @@ void LockablePuzzle::Read() {}
 void LockablePuzzle::UpdateLock(APState state) {}
 void LockablePuzzle::Restore() {}
 
-void LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB, int id) {
+int LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB, int id) {
 	//does not respect width/height but its hardcoded at a grid of 4/2
 
 	//panel coordinates go from 0,0 in bottom left to 1,1 in top right
@@ -59,6 +59,8 @@ void LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, 
 		0, 0, 0, 0, 0, //top row
 	};
 
+	int rows = 3;
+
 	if (id == 0x0A332) {
 		gridIntersections = {
 			0.35f, 0.37f, 0.35f, 0.52f, 0.35f, 0.67f, 0.35f, 0.82f, 0.35f, 0.97f, //bottom row
@@ -76,6 +78,8 @@ void LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, 
 			0, 0, 0, 0, 0, //bottom row
 			0, 0, 0, 0, 0, //middle row
 		};
+
+		rows = 2;
 
 		gridConnectionsA = {
 			0, 1, 2, 3, //horizontal bottom row
@@ -115,6 +119,8 @@ void LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, 
 			0, 0, 0, 0, 0, //middle row
 		};
 
+		rows = 2;
+
 		gridConnectionsA = {
 			0, 1, 2, 3, //horizontal bottom row
 			5, 6, 7, 8, //horizontal middle row
@@ -147,6 +153,8 @@ void LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, 
 	intersectionFlags.insert(intersectionFlags.begin(), gridIntersectionFlags.begin(), gridIntersectionFlags.end());
 	connectionsA.insert(connectionsA.begin(), gridConnectionsA.begin(), gridConnectionsA.end());
 	connectionsB.insert(connectionsB.begin(), gridConnectionsB.begin(), gridConnectionsB.end());
+
+	return rows;
 }
 
 void LockablePanel::createCenteredText(std::string text, std::vector<float>& intersections, std::vector<int>& intersectionFlags,
@@ -180,7 +188,7 @@ void LockablePanel::createText(std::string text, std::vector<float>& intersectio
 
 int LockablePanel::addPuzzleSymbols(const APState& state,
 	std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB,
-	std::vector<int>& decorations, std::vector<int>& decorationsFlags, std::vector<int>& polygons, int id) {
+	std::vector<int>& decorations, std::vector<int>& decorationsFlags, std::vector<int>& polygons, int id, int initialRows) {
 
 	//does not respect width/height but its hardcoded at a grid of 4/2
 	//stored the puzzle simnbols per grid section, from bottom to top from left to right so buttom left is decoration 0
@@ -333,6 +341,7 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 			0, 0, 0, 0, //middle row
 			0, 0, 0, 0, //top row
 		};
+
 		std::vector<int> symmetryConnectionsA = {
 			intersectionOffset + 0, intersectionOffset + 2, //horizontal bottom row
 			intersectionOffset + 4, intersectionOffset + 6, //horizontal middle row
@@ -430,39 +439,61 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 		if (oneRow) i++;
 	}
 
-	if (hasColoredDots && !state.unlockedColoredDots) {
-		intersectionFlags[11] = IntersectionFlags::DOT | IntersectionFlags::DOT_IS_BLUE;
-		intersectionFlags[12] = IntersectionFlags::DOT | IntersectionFlags::DOT_IS_ORANGE;
-
-		if (hasDots && !state.unlockedDots)
-			intersectionFlags[13] = IntersectionFlags::DOT;
-		else if (hasSoundDots && !state.unlockedSoundDots) {
-			intersectionFlags[6] = IntersectionFlags::DOT | IntersectionFlags::DOT_SMALL;
-			intersectionFlags[7] = IntersectionFlags::DOT | IntersectionFlags::DOT_MEDIUM;
-			intersectionFlags[8] = IntersectionFlags::DOT | IntersectionFlags::DOT_LARGE;
-		}
-	}
-
 	if (hasFullDots && !state.unlockedFullDots) {
 		for (int i = 0; i < 15; i++) {
 			intersectionFlags[i] |= IntersectionFlags::DOT;
 		}
 	}
-	else if (hasSoundDots && !state.unlockedSoundDots) {
-		intersectionFlags[11] = IntersectionFlags::DOT | IntersectionFlags::DOT_SMALL;
-		intersectionFlags[12] = IntersectionFlags::DOT | IntersectionFlags::DOT_MEDIUM;
-		intersectionFlags[13] = IntersectionFlags::DOT | IntersectionFlags::DOT_LARGE;
-	}
-	else if (hasDots && !state.unlockedDots) {
-		if (id == 0x09EEB) intersectionFlags[0] = IntersectionFlags::DOT;
-		else if (id == 0x1C349) intersectionFlags[6] = IntersectionFlags::DOT;
-		else intersectionFlags[11] = IntersectionFlags::DOT;
-	}
 
 	decorations.insert(decorations.begin(), gridDecorations.begin(), gridDecorations.end());
 	decorationsFlags.insert(decorationsFlags.begin(), gridDecorationsFlags.begin(), gridDecorationsFlags.end());
 
+	int startOfTopRow = 5 * (initialRows - 1);
+	
+	if (hasColoredDots && !state.unlockedColoredDots) {
+		insertDot(intersections, intersectionFlags, connectionsA, connectionsB, startOfTopRow + 2, IntersectionFlags::DOT | IntersectionFlags::DOT_IS_ORANGE);
+		insertDot(intersections, intersectionFlags, connectionsA, connectionsB, startOfTopRow + 1, IntersectionFlags::DOT | IntersectionFlags::DOT_IS_BLUE);
+	}
+
+	if (hasDots && !state.unlockedDots) {
+		int index = startOfTopRow;
+		if (id == 0x1C349) index = 0;  // Symmetry Island Upper: Needs to be in a visible spot
+		insertDot(intersections, intersectionFlags, connectionsA, connectionsB, index, IntersectionFlags::DOT);
+	}
+
+	if (hasSoundDots && !state.unlockedSoundDots) {
+		insertDot(intersections, intersectionFlags, connectionsA, connectionsB, 2, IntersectionFlags::DOT | IntersectionFlags::DOT_LARGE);
+		insertDot(intersections, intersectionFlags, connectionsA, connectionsB, 1, IntersectionFlags::DOT | IntersectionFlags::DOT_MEDIUM);
+		insertDot(intersections, intersectionFlags, connectionsA, connectionsB, 0, IntersectionFlags::DOT | IntersectionFlags::DOT_SMALL);
+	}
+	
 	return extraRows;
+}
+
+void LockablePanel::insertDot(std::vector<float>& intersections, std::vector<int>& intersectionFlags, std::vector<int>& connectionsA, std::vector<int>& connectionsB, int index, int flags) {
+	int intersection1Index = index;
+	int intersection2Index = index + 1;
+
+	float middlex = (intersections[intersection1Index * 2] + intersections[intersection2Index * 2]) / 2;
+	float middley = (intersections[intersection1Index * 2 + 1] + intersections[intersection2Index * 2 + 1]) / 2;
+
+	int newIndex = intersections.size() / 2;
+
+	intersections.push_back(middlex);
+	intersections.push_back(middley);
+
+	intersectionFlags.push_back(flags);
+
+	int connectionIndex = 0;
+	for (; connectionIndex < connectionsA.size(); connectionIndex++) {
+		if (connectionsA[connectionIndex] == intersection1Index && connectionsB[connectionIndex] == intersection2Index) {
+			break;
+		}
+	}
+	int tmp = connectionsB[connectionIndex];
+	connectionsB[connectionIndex] = newIndex;
+	connectionsA.push_back(newIndex);
+	connectionsB.push_back(tmp);
 }
 
 void LockablePanel::Read() {
@@ -843,15 +874,15 @@ void LockablePanel::UpdateLock(APState state) {
 		}
 	}
 	else if (fairly_thin_panels.count(id) || id == 0x09EEB) {
-		addMissingSymbolsDisplay(intersections, intersectionFlags, connectionsA, connectionsB, id);
-		extraRows = addPuzzleSymbols(state, intersections, intersectionFlags, connectionsA, connectionsB, decorations, decorationsFlags, polygons, id);
+		int initialRows = addMissingSymbolsDisplay(intersections, intersectionFlags, connectionsA, connectionsB, id);
+		extraRows = addPuzzleSymbols(state, intersections, intersectionFlags, connectionsA, connectionsB, decorations, decorationsFlags, polygons, id, initialRows);
 		memory->WritePanelData<int>(id, GRID_SIZE_X, { width + 1 });
 		memory->WritePanelData<int>(id, GRID_SIZE_Y, { height + 1 + extraRows });
 	}
 	else if (wide_panels.count(id)) {
 		if (puzzleIsMissingSymbols) {
-			addMissingSymbolsDisplay(intersections, intersectionFlags, connectionsA, connectionsB, id);
-			extraRows = addPuzzleSymbols(state, intersections, intersectionFlags, connectionsA, connectionsB, decorations, decorationsFlags, polygons, id);
+			int initialRows = addMissingSymbolsDisplay(intersections, intersectionFlags, connectionsA, connectionsB, id);
+			extraRows = addPuzzleSymbols(state, intersections, intersectionFlags, connectionsA, connectionsB, decorations, decorationsFlags, polygons, id, initialRows);
 			memory->WritePanelData<int>(id, GRID_SIZE_X, { width + 1 });
 			memory->WritePanelData<int>(id, GRID_SIZE_Y, { height + 1 + extraRows });
 		}
@@ -876,9 +907,9 @@ void LockablePanel::UpdateLock(APState state) {
 		}
 	}
 	else {
-		addMissingSymbolsDisplay(intersections, intersectionFlags, connectionsA, connectionsB, id);
+		int initialRows = addMissingSymbolsDisplay(intersections, intersectionFlags, connectionsA, connectionsB, id);
 
-		extraRows = addPuzzleSymbols(state, intersections, intersectionFlags, connectionsA, connectionsB, decorations, decorationsFlags, polygons, id);
+		extraRows = addPuzzleSymbols(state, intersections, intersectionFlags, connectionsA, connectionsB, decorations, decorationsFlags, polygons, id, initialRows);
 
 		if (id == 0x0A332) {
 			int currentIntersections = intersections.size();
