@@ -607,6 +607,8 @@ void LockablePanel::Read() {
 	int dotAmount = 0;
 	int pointsToConsider = 0;
 
+	bool hasNonIntersectionDots = false;  // Track this temporarily
+
 	for (int i = 0; i < numberOfDots; i++) {
 		if (dot_flags[i] & DOT) {
 			if (dot_flags[i] & DOT_IS_BLUE || dot_flags[i] & DOT_IS_ORANGE)
@@ -618,9 +620,11 @@ void LockablePanel::Read() {
 		}
 
 		if (dot_flags[i] & GAP || dot_flags[i] & STARTPOINT || dot_flags[i] & ENDPOINT || dot_flags[i] & NO_POINT) {
+			hasNonIntersectionDots = true;
 			continue;
 		}
 		if ((dot_flags[i] & ROW) && !(dot_flags[i] & COLUMN) || (dot_flags[i] & COLUMN) && !(dot_flags[i] & ROW)) {
+			hasNonIntersectionDots = true;
 			continue;
 		}
 
@@ -633,13 +637,13 @@ void LockablePanel::Read() {
 
 	if (pointsToConsider && ((float)dotAmount / (float)pointsToConsider >= 0.9)) {
 		hasFullDots = true;
+		if (!hasNonIntersectionDots) hasDots = false;
 	}
 
-	else if (id == 0x00A52 || id == 0x00A61 || id == 0x00A57 || id == 0x00A64 || id == 0x00A5B || id == 0x00A68) // These dots seem to get picked up as normal dots, not colored ones. Also, these panels should require Symmetry despite not having Symmetry on them.
+	else if (id == 0x00A52 || id == 0x00A61 || id == 0x00A57 || id == 0x00A64 || id == 0x00A5B || id == 0x00A68) // These dots seem to get picked up as normal dots, not colored ones.
 	{
 		hasDots = false;
 		hasColoredDots = true;
-		hasSymmetry = true;
 	}
 	else if (id == 0x15ADD) { // River Vault: The squares are drawn on and validated separately!
 		hasStones = true;
