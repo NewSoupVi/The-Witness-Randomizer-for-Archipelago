@@ -125,6 +125,12 @@ inline const std::set<int> skip_noLine = {
 	0x17CAA, // River to Monastery shortcut lattice
 };
 
+inline const std::set<int> tiltedCutoutPanels = {
+	0x15ADD, // River Vault
+	0x17CAA, // River to Monastery shortcut lattice
+	0x00290, 0x00038, 0x00037, //Monastery Lattice
+};
+
 inline const std::set<int> cutoutPanels = {
 	0x28a69, 0x15ADD, 0x00290, 0x00038, 0x00037, 0x17caa, 0x09F7D, 0x09FDC, 0x09FF7, 0x09F82, 0x09D9F, 0x09FF8, 0x09DA1, 0x09DA2, 0x09DAF, 0x0A010, 0x0A01B, 0x0A01F, 0x17E63, 0x17E67,
 };
@@ -231,6 +237,8 @@ inline const std::set<int> skip_multisolvePuzzles = {
 	0x0A3A8, 0x0A3B9, 0x0A3BB, 0x0A3AD, // Pressure plate resets (needed for EPs)
 
 	// Mountain
+	0x17C34, // Mountain Entry
+
 	0x09FC1, 0x09F8E, 0x09F01, 0x09EFF, // Metapuzzle small panels <-- TODO: These are fully "solved" once the big puzzle has been solved.
 	0x09E39, 0x09E86, 0x09ED8, // Light Bridge Controls
 	0x09FCC, 0x09FCE, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2, // Same solution set
@@ -261,10 +269,6 @@ inline const std::set<int> skip_multisolvePuzzles = {
 };
 
 inline const std::set<int> skip_specialCase = {
-	0x09E86, 0x09ED8,
-
-	0x00A52, 0x00A57, 0x00A5B, 0x00A61, 0x00A64, 0x00A68, //Symmetry Laser Panels
-
 	0x0A3A8, 0x0A3B9, 0x0A3BB, 0x0A3AD, // Pressure plate reset lines
 
 	0x09FC1, 0x09F8E, 0x09F01, 0x09EFF, // Metapuzzle
@@ -275,6 +279,29 @@ inline const std::set<int> skip_specialCase = {
 	// Challenge Puzzles
 	0x0A332, 0x0088E, 0x00BAF, 0x00BF3, 0x00CB9, 0x00CA1, 0x00C80, 0x00C68, 0x00C59, 0x00C22, 0x034F4, 0x034EC, 0x1C31A, 0x1C319,
 	0x01983, 0x01987, // Peekaboo
+};
+
+inline const std::map<int, std::vector<int>> skipTogether = {
+	{ 0x00A52, {0x00A61} }, // Symmetry Island Laser Panels
+	{ 0x00A61, {0x00A52} },
+	{ 0x00A57, {0x00A64} },
+	{ 0x00A64, {0x00A57} },
+	{ 0x00A5B, {0x00A68} },
+	{ 0x00A68, {0x00A5B} },
+
+	{ 0x09E86, {0x09ED8} }, // Mountain Floor 2 Light Bridge Cont
+	{ 0x09ED8, {0x09E86} },
+
+	{ 0x00CB9, { 0x00CA1, 0x00C80 } }, // Challenge triplets
+	{ 0x00CA1, { 0x00CB9, 0x00C80 } },
+	{ 0x00C80, { 0x00CB9, 0x00CA1 } },
+
+	{ 0x00C68, { 0x00C59, 0x00C22 } }, // Challenge triplets
+	{ 0x00C59, { 0x00C68, 0x00C22 } },
+	{ 0x00C22, { 0x00C68, 0x00C59 } },
+
+	{ 0x17C0A, {0x17E07} }, // Swamp Maze control
+	{ 0x17E07, {0x17C0A} },
 };
 
 inline const std::set<int> skip_dontRandomize = {

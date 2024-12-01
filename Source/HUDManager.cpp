@@ -23,6 +23,17 @@
 // Verifies that sigscans are working by comparing them against hardcoded values in the Steam build.
 #define DEBUG_SIGSCAN 0
 
+HudManager* HudManager::_singleton = nullptr;
+
+void HudManager::create() {
+	if (_singleton == nullptr) {
+		_singleton = new HudManager();
+	}
+}
+
+HudManager* HudManager::get() {
+	return _singleton;
+}
 
 HudManager::HudManager() {
 	overwriteSubtitleFunction();
@@ -51,6 +62,11 @@ void HudManager::update(float deltaSeconds) {
 	if (hudTextDirty) {
 		updatePayloads();
 	}
+}
+
+void HudManager::displayBannerMessageIfQueueEmpty(const std::string& text, RgbColor color, float duration) {
+	if (bannerTimeRemaining > 0) return;
+	queueBannerMessage(text, color, duration);
 }
 
 void HudManager::queueBannerMessage(const std::string& text, RgbColor color, float duration) {

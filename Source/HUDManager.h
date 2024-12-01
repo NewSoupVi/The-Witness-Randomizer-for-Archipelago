@@ -21,7 +21,13 @@ enum class InfoMessageCategory : int {
 };
 
 class HudManager {
+private:
+	static HudManager* _singleton;
+
 public:
+
+	static void create();
+	static HudManager* get();
 
 	HudManager();
 	
@@ -29,6 +35,7 @@ public:
 
 	// Queue a message to be shown at the top of the screen, such as "Connected to Archipelago".
 	void queueBannerMessage(const std::string& text, RgbColor color = RgbColor(), float duration = 5.f);
+	void displayBannerMessageIfQueueEmpty(const std::string& text, RgbColor color = RgbColor(), float duration = 5.f);
 
 	// Queue a message to be shown in the notifications block, such as "Received Shapers".
 	void queueNotification(const std::string& text, RgbColor flashColor = RgbColor());

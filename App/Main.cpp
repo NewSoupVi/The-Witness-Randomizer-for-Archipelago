@@ -28,6 +28,7 @@
 #include "Archipelago/APRandomizer.h"
 #include <Archipelago/APGameData.h>
 #include <Archipelago/ASMPayloadManager.h>
+#include <HUDManager.h>
 
 
 #define IDC_RANDOMIZE 0x401
@@ -163,8 +164,13 @@ void focusEdit(HWND hwnd) {
 //			//}
 
 void Main::randomize() {
+	Memory::get()->resetComputedAddresses();
+
 	ClientWindow* clientWindow = ClientWindow::get();
 	clientWindow->setWindowMode(ClientWindowMode::Disabled);
+
+	clientWindow->logLine("Store settings.");
+	clientWindow->saveSettings();
 
 	clientWindow->logLine("Attempting randomization.");
 
@@ -172,7 +178,7 @@ void Main::randomize() {
 
 	bool rerandomize = false;
 	if (memory->ReadPanelData<int>(0x00064, NUM_DOTS) > 5) {
-		if (clientWindow->showDialogPrompt("Game is currently randomized. Are you sure you want to randomize again? (Can cause glitches)") == true) {
+		if (clientWindow->showDialogPrompt("Game is currently randomized. Are you sure you want to randomize again? (Can cause glitches)", "Already Randomized") == true) {
 			rerandomize = true;
 		}
 		else {
@@ -193,7 +199,8 @@ void Main::randomize() {
 	randomizer->seedIsRNG = false;
 	apRandomizer->SyncProgress = clientWindow->getSetting(ClientToggleSetting::SyncProgress);
 	apRandomizer->CollectedPuzzlesBehavior = clientWindow->getSetting(ClientDropdownSetting::Collect);
-	apRandomizer->DisabledPuzzlesBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledPuzzles);
+	apRandomizer->DisabledPanelsBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledPanels);
+	apRandomizer->DisabledEPsBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledEPs);
 	apRandomizer->solveModeSpeedFactor = 0.0f; // THIS VALUE IN THE FUTURE CAN BE USED TO MAKE SPEED BOOSTS TICK DOWN AT A SLOW RATE IN SOLVE MODE RATHER THAN STOP OR GO AT FULL SPEED
 
 	clientWindow->setStatusMessage("Connecting to Archipelago...");
@@ -213,7 +220,7 @@ void Main::randomize() {
 	int lastSeed = memory->ReadPanelData<int>(0x00064, VIDEO_STATUS_COLOR + 8);
 	if (lastSeed != 1041865114 && !rerandomize && !DEBUG) {
 		if (seed != lastSeed) {
-			if (clientWindow->showDialogPrompt("This save file was previously randomized with a different seed, are you sure you want to randomize it with a new seed?") == false) {
+			if (clientWindow->showDialogPrompt("This save file was previously randomized with a different seed, are you sure you want to randomize it with a new seed?", "Previously Randomized") == false) {
 				return;
 			}
 
@@ -224,7 +231,7 @@ void Main::randomize() {
 
 	//If the save hasn't been randomized before, make sure it is a fresh, unplayed save file
 	else if (Special::hasBeenPlayed() && !rerandomize && !DEBUG) {
-		if (clientWindow->showDialogPrompt("Warning: It is recommended that you start a new game for the randomizer, to prevent corruption of your save file. Randomize on the current save file anyway?") == true) {
+		if (clientWindow->showDialogPrompt("Warning: It is recommended that you start a new game for the randomizer, to prevent corruption of your save file. Randomize on the current save file anyway?", "Already Played") == true) {
 			randomizer->seedIsRNG = false;
 		}
 		else return;
@@ -241,9 +248,6 @@ void Main::randomize() {
 	Special::writeStringToPanels(apSlotName, slotNamePanels);
 	Special::writeStringToPanels(apPassword, passwordPanels);
 
-	clientWindow->logLine("Store settings.");
-	clientWindow->saveSettings();
-
 	clientWindow->logLine("Configure base randomizer.");
 	randomizer->seed = seed;
 	randomizer->colorblind = clientWindow->getSetting(ClientToggleSetting::ColorblindMode);
@@ -251,6 +255,7 @@ void Main::randomize() {
 
 	clientWindow->logLine("Create ASMPayloadManager.");
 	ASMPayloadManager::create();
+	HudManager::create();
 
 	clientWindow->setStatusMessage("Initialising puzzles...");
 	apRandomizer->InitPanels();
@@ -302,11 +307,13 @@ void Main::randomize() {
 }
 
 void Main::loadCredentials() {
+	Memory::get()->resetComputedAddresses();
+
 	ClientWindow* clientWindow = ClientWindow::get();
 
 	std::string apAddress = Special::readStringFromPanels(addressPanels);
 	if (apAddress.length() == 0) {
-		clientWindow->showMessageBox("This save has not previously been randomized with Archipelago and has no stored credentials.");
+		clientWindow->showMessageBox("This save has not previously been randomized with Archipelago and has no stored credentials.", "Not previously randomized");
 		return;
 	}
 
@@ -462,7 +469,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	//Initialize memory globals constant depending on game version
 	Memory::create();
 	Memory* memory = memory->get();
-	
+
 	InputWatchdog::initialize();
 
 	//Get the seed and difficulty previously used for this save file (if applicable)
@@ -634,7 +641,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	//ACCEL Accel[] = { { FVIRTKEY, VK_TAB, IDC_TAB}, { FVIRTKEY, VK_RETURN, IDC_RETURN} };
 	//const HACCEL hAccel = CreateAcceleratorTable(Accel, sizeof(Accel) / sizeof(ACCEL));
 
-    MSG msg;
+	MSG msg;
 	ClientWindow* clientWindow = ClientWindow::get();
 	while (GetMessage(&msg, nullptr, 0, 0))
 	{
@@ -643,7 +650,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-    }
+	}
 
-    return (int) msg.wParam;
+	return (int)msg.wParam;
 }

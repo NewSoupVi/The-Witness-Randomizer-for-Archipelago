@@ -13,14 +13,14 @@
 #include <queue>
 
 class Generate;
-class HudManager;
 class DrawIngameManager;
 class PanelLocker;
+class Color;
 
 
 class APWatchdog : public Watchdog {
 public:
-	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, std::string> epn, std::map<int, inGameHint> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, float smsf, bool elev, std::string col, std::string dis, std::set<int> disP, std::set<int> hunt, std::map<int, std::set<int>> iTD, std::map<int, std::vector<int>> pI, int dlA, std::map<int, int> dToI);
+	APWatchdog(APClient* client, std::map<int, int> mapping, int lastPanel, PanelLocker* p, std::map<int, inGameHint> a, std::map<int, std::set<int>> o, bool ep, int puzzle_rando, APState* s, float smsf, std::set<std::string> elev, std::string col, std::string dis, std::string disEP, std::set<int> disP, std::set<int> hunt, std::map<int, std::set<int>> iTD, std::map<int, std::vector<int>> pI, int dlA, std::map<int, int> dToI, std::vector<std::string> warps, bool sync);
 
 	int DEATHLINK_DURATION = 15;
 
@@ -55,13 +55,14 @@ public:
 	void SkipPanel(int id, std::string reason, bool kickOut) {
 		SkipPanel(id, reason, kickOut, 0);
 	}
-	void SkipPanel(int id, std::string reason, bool kickOut, int cost);
+	void SkipPanel(int id, std::string reason, bool kickOut, int cost, bool allowRecursion = true);
 
 	void DisablePuzzle(int id);
 
 	void DoubleDoorTargetHack(int id);
 
 	void SetItemRewardColor(const int& id, const int& itemFlags);
+	void WriteRewardColorToPanel(int id, Color color);
 	bool PanelShouldPlayEpicVersion(const int& id);
 	void PlaySentJingle(const int& id, const int& itemFlags);
 	void PlayReceivedJingle(const int& itemFlags);
@@ -71,15 +72,20 @@ public:
 	bool CheckPanelHasBeenSolved(int panelId);
 
 	void SetValueFromServer(std::string key, nlohmann::json value);
-	void HandleLaserResponse(std::string laserID, nlohmann::json value, bool syncProgress);
-	void HandleEPResponse(std::string epID, nlohmann::json value, bool syncProgress);
-	void HandleAudioLogResponse(std::string logIDstr, nlohmann::json value, bool syncprogress);
-	void HandleLaserHintResponse(std::string laserIDstr, nlohmann::json value, bool syncprogress);
-	void HandleSolvedPanelsResponse(nlohmann::json value, bool syncProgress);
-	void HandleOpenedDoorsResponse(nlohmann::json value, bool syncProgress);
+	void HandleLaserResponse(std::string laserID, nlohmann::json value);
+	void HandleWarpResponse(nlohmann::json value);
+	void HandleEPResponse(std::string epID, nlohmann::json value);
+	void HandleAudioLogResponse(std::string logIDstr, nlohmann::json value);
+	void HandleLaserHintResponse(std::string laserIDstr, nlohmann::json value);
+	void HandleSolvedPanelsResponse(nlohmann::json value);
+	void HandleHuntEntityResponse(nlohmann::json value);
+	void HandleOpenedDoorsResponse(nlohmann::json value);
 	void setLocationItemFlag(int64_t location, unsigned int flags);
 
-	void PotentiallyColorPanel(int64_t location);
+	void PotentiallyColorPanel(int64_t location) {
+		PotentiallyColorPanel(location, false);
+	}
+	void PotentiallyColorPanel(int64_t location, bool overrideRecolor);
 
 	void InfiniteChallenge(bool enable);
 
@@ -89,10 +95,12 @@ public:
 
 	void QueueReceivedItem(std::vector<__int64> item);
 
-	HudManager* getHudManager() const { return hudManager.get(); }
-
 	std::set<int> seenAudioLogs;
 	std::set<int> seenLasers;
+
+	bool DoorWasLocked(int id) {
+		return lockedDoors.contains(id);
+	}
 
 private:
 	APClient* ap;
@@ -103,6 +111,8 @@ private:
 	std::map<int, int> locationIdToPanelId_READ_ONLY;
 	std::map<int64_t, unsigned int> locationIdToItemFlags;
 	std::set<int64_t> checkedLocations;
+	std::set<int> recolorWhenSolved;
+	std::set<int> neverRecolorAgain;
 	std::set<int> alreadyPlayedHuntEntityJingle;
 	std::set<std::pair<int, int64_t>> locationsThatContainedItemsFromOtherPlayers;
 	int finalPanel;
@@ -118,6 +128,9 @@ private:
 	float timePassedSinceRandomisation = 0.0f;
 	float timePassedSinceFirstJinglePlayed = 0.0f;
 
+	bool firstTimeActiveEntity = false;
+	bool deathLinkFirstResponse = false;
+
 	int halfSecondCounter = 0;
 
 	int mostRecentItemId = -1;
@@ -125,12 +138,10 @@ private:
 	std::map<int, std::set<int>> itemIdToDoorSet;
 	std::map<int, std::vector<int>> progressiveItems;
 
-	std::shared_ptr<HudManager> hudManager;
-
 	int DeathLinkAmnesty = 0;
 	int DeathLinkCount = 0;
 
-	bool ElevatorsComeToYou = false;
+	std::set<std::string> ElevatorsComeToYou = {};
 	bool EPShuffle = false;
 	int PuzzleRandomization = 0;
 
@@ -138,7 +149,9 @@ private:
 	std::string CollectText = "Unchanged";
 	bool CollectUnlock = false;
 	std::string DisabledPuzzlesBehavior = "Prevent Solve";
+	std::string DisabledEPsBehavior = "Prevent Solve";
 	std::set<int> DisabledEntities;
+	bool SyncProgress = false;
 
 	std::map<int, bool> huntEntityToSolveStatus;
 	std::map<std::string, std::set<int>> huntEntitiesPerArea;
@@ -149,13 +162,15 @@ private:
 	std::map<int, int> doorToItemId;
 
 	bool FirstEverLocationCheckDone = false;
+	bool locationCheckInProgress = false;
 	bool firstStorageCheckDone = false;
+	bool firstActionDone = false;
 	bool firstJinglePlayed = false;
 
 	bool hasPowerSurge = false;
-	bool hasDeathLink = false;
+	bool isKnockedOut = false;
 	std::chrono::system_clock::time_point powerSurgeStartTime;
-	std::chrono::system_clock::time_point deathLinkStartTime;
+	std::chrono::system_clock::time_point knockOutStartTime;
 
 	std::set<double> deathLinkTimestamps;
 
@@ -177,14 +192,23 @@ private:
 	float solveModeSpeedFactor = 0.0f;
 
 	bool infiniteChallenge = false;
+	bool infiniteChallengeIsValid = false;
 	bool insideChallengeBoxRange = true;
 
 	bool symmetryMessageDelivered = false;
 	bool ppMessageDelivered = false;
 
+	std::mt19937 rng = std::mt19937(std::chrono::steady_clock::now().time_since_epoch().count());
+	int tutorialCableFlashState = 0;
+	int tutorialCableStateChangedRecently = 0;
+
 	void HandleKeyTaps();
 
 	void HandleInteractionState();
+
+	bool IsPanelSolved(int id, bool ensureSet);
+
+	std::vector<int> CheckCompletedHuntEntities();
 	
 	void CheckEPSkips();
 
@@ -201,7 +225,9 @@ private:
 	void HandleMovementSpeed(float deltaSeconds);
 	void HandlePowerSurge();
 	void HandleDeathLink();
-	void HandleVision(float deltaSeconds);
+	bool IsEncumbered();
+	void HandleEncumberment(float deltaSeconds, bool doFunctions);
+	void HandleWarp(float deltaSeconds);
 
 	void LookingAtLockedEntity();
 
@@ -229,6 +255,7 @@ private:
 	void CheckLasers();
 	void CheckEPs();
 	void CheckPanels();
+	void CheckHuntEntities();
 	void CheckDoors();
 
 	void CheckImportantCollisionCubes();
@@ -244,11 +271,31 @@ private:
 
 	void CheckFinalRoom();
 
+	void ToggleSleep();
+	void TryWarp();
+
+	void CheckUnlockedWarps();
+
+	void UnlockWarps(std::vector<std::string> warps);
+
+	std::string startingWarp = "Tutorial First Hallway";
+	std::map<std::string, bool> unlockableWarps = {};
+	std::set<std::string> badWarps = {};
+	std::vector<Warp*> unlockedWarps = {};
+	Warp* selectedWarp = NULL;
+	bool hasTeleported = true;
+	bool hasDoneTutorialMarker = true;
+	bool hasTriedExitingNoclip = true;
+	std::chrono::system_clock::time_point attemptedWarpCompletion;
+	float warpRetryTime = 0.0f;
+
 	void DoAprilFoolsEffects(float deltaSeconds);
 
 	Vector3 getHuntEntitySpherePosition(int huntEntity);
 
-	void DrawHuntPanelSpheres(float deltaSeconds);
+	void DrawSpheres(float deltaSeconds);
+
+	void FlickerCable();
 
 	Vector3 getCachedEntityPosition(int id);
 
@@ -261,6 +308,7 @@ private:
 
 	std::set<int> solvedPanels;
 	std::set<int> openedDoors;
+	std::set<int> solvedHuntEntitiesDataStorage;
 	std::map<std::string, bool> lastDeadChecks;
 
 	std::map<std::string, int> EPIDsToEPs;
@@ -283,6 +331,8 @@ private:
 	std::string puzzleSkipInfoMessage;
 	float skipButtonHeldTime = 0.f; // Tracks how long the skip button has been held.
 
+	std::string DeathLinkDataStorageKey = "";
+
 	// The cost to skip the currently-selected puzzle. -1 if the puzzle cannot be
 	//   skipped for whatever reason.
 	int puzzleSkipCost = -1;
@@ -291,7 +341,6 @@ private:
 	std::map<int, std::set<int>> obeliskHexToEPHexes = {};
 	std::map<int, int> epToObeliskSides = {};
 	std::map<int, int> obeliskHexToAmountOfEPs = {};
-	std::map<int, std::string> entityToName = {};
 
 	Vector3 lastMouseDirection;
 	float dogPettingDuration = 0.f;

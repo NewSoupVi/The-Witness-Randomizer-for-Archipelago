@@ -3,6 +3,7 @@
 #include "Memory.h"
 #include "Utilities.h"
 #include "ClientWindow.h"
+#include "HUDManager.h"
 
 
 #define PRINT_INPUT_DEBUG 0
@@ -27,6 +28,7 @@ InputWatchdog::InputWatchdog() : Watchdog(0.016f) {
 
 	// TEMP: Set default keybinds.
 	customKeybinds[CustomKey::SKIP_PUZZLE] = InputButton::KEY_T;
+	customKeybinds[CustomKey::SLEEP] = InputButton::KEY_E;
 }
 
 void InputWatchdog::action() {
@@ -46,8 +48,20 @@ InputButton InputWatchdog::getCustomKeybind(CustomKey key) const {
 }
 
 InteractionState InputWatchdog::getInteractionState() const {
+	if (warpTimer >= 0) {
+		if (currentMenuOpenPercent >= 1.f) {
+			return InteractionState::MenuAndSleeping;
+		}
+		return InteractionState::Warping;
+	}
 	if (currentlyRebindingKey.has_value()) {
 		return InteractionState::Keybinding;
+	}
+	if (isAsleep) {
+		if (currentMenuOpenPercent >= 1.f) {
+			return InteractionState::MenuAndSleeping;
+		}
+		return InteractionState::Sleeping;
 	}
 	else if (currentMenuOpenPercent >= 1.f) {
 		return InteractionState::Menu;
@@ -87,6 +101,12 @@ std::vector<InputButton> InputWatchdog::consumeTapEvents() {
 	return output;
 }
 
+std::vector<MovementDirection> InputWatchdog::consumeDirectionalEvents() {
+	std::vector<MovementDirection> output = pendingDirectionEvents;
+	pendingDirectionEvents.clear();
+	return output;
+}
+
 const Vector3& InputWatchdog::getMouseDirection() const {
 	return mouseDirection;
 }
@@ -96,6 +116,9 @@ void InputWatchdog::loadCustomKeybind(CustomKey key, InputButton button) {
 }
 
 void InputWatchdog::beginCustomKeybind(CustomKey key) {
+	if (getInteractionState() == InteractionState::Sleeping) {
+		HudManager::get()->queueBannerMessage("Cannot keybind while sleeping.");
+	}
 	currentlyRebindingKey = key;
 	ClientWindow::get()->focusGameWindow();
 }
@@ -163,6 +186,59 @@ bool InputWatchdog::isValidForCustomKeybind(InputButton button) const
 	}
 
 	return true;
+}
+
+void InputWatchdog::setSleep(bool sleep) {
+	this->isAsleep = sleep;
+}
+
+void InputWatchdog::startWarp(bool longWarp) {
+	this->warpTimer = WARPTIME;
+	if (longWarp) this->warpTimer += LONGWARPBUFFER;
+	this->isAllowedToCompleteWarp = false;
+}
+
+void InputWatchdog::endWarp() {
+	this->setSleep(false);
+	this->warpTimer = -1;
+}
+
+void InputWatchdog::allowWarpCompletion() {
+	isAllowedToCompleteWarp = true;
+}
+
+bool InputWatchdog::warpIsGoingOvertime() const {
+	return !isAllowedToCompleteWarp && this->warpTimer == WARPFINALISATIONTIME;
+}
+
+float InputWatchdog::getWarpTime() {
+	return this->warpTimer;
+}
+
+void InputWatchdog::updateWarpTimer(float deltaSeconds) {
+	if (this->warpTimer == -1) return;
+	if (this->warpTimer - deltaSeconds <= 0) {
+		this->warpTimer = 0;
+	}
+	else if (!isAllowedToCompleteWarp && this->warpTimer - deltaSeconds <= WARPFINALISATIONTIME) {
+		this->warpTimer = WARPFINALISATIONTIME;
+	}
+	else {
+		this->warpTimer -= deltaSeconds;
+	}
+}
+
+int InputWatchdog::readInteractMode() {
+	int32_t interactMode;
+
+	bool success = Memory::get()->ReadRelative(reinterpret_cast<void*>(interactModeOffset), &interactMode, sizeof(int32_t));
+	if (!success) {
+		return 0x2;
+	}
+	else
+	{
+		return interactMode;
+	}
 }
 
 void InputWatchdog::updateKeyState() {
@@ -235,6 +311,26 @@ void InputWatchdog::updateKeyState() {
 #endif
 	}
 
+	Vector3 desiredMovementDirection = Vector3(memory->ReadDesiredMovementDirection());
+
+	MovementDirection currentDirection = MovementDirection::NONE;
+
+	if (std::abs(desiredMovementDirection.X) >= std::abs(desiredMovementDirection.Y)) {
+		if (desiredMovementDirection.X > 0.5) currentDirection = MovementDirection::UP;
+		if (desiredMovementDirection.X < -0.5) currentDirection = MovementDirection::DOWN;
+	}
+	else {
+		if (desiredMovementDirection.Y > 0.5) currentDirection = MovementDirection::RIGHT;
+		if (desiredMovementDirection.Y < -0.5) currentDirection = MovementDirection::LEFT;
+	}
+
+	if (currentDirection != lastDirection) {
+		lastDirection = currentDirection;
+		if (currentDirection != MovementDirection::NONE) {
+			pendingDirectionEvents.push_back(currentDirection);
+		}
+	}
+
 #if PRINT_INPUT_DEBUG
 	if (changedKeys.size() > 0) {
 		std::wostringstream activeKeyString;
@@ -287,9 +383,7 @@ void InputWatchdog::updateInteractionState() {
 
 	InteractionState oldState = getInteractionState();
 
-	if (interactModeOffset == 0 || !memory->ReadRelative(reinterpret_cast<void*>(interactModeOffset), &currentInteractMode, sizeof(int32_t))) {
-		currentInteractMode = 0x2; // fall back to not solving
-	}
+	currentInteractMode = readInteractMode();
 
 	if (menuOpenOffset == 0 || !memory->ReadRelative(reinterpret_cast<void*>(menuOpenOffset), &currentMenuOpenPercent, sizeof(float))) {
 		currentMenuOpenPercent = 0.f; // fall back to not open

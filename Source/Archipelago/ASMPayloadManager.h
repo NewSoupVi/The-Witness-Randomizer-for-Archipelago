@@ -27,6 +27,7 @@ public:
 	static void create();
 	static ASMPayloadManager* get();
 
+	void ActivateMarker(int id);
 	void OpenDoor(int id);
 	void CloseDoor(int id);
 	void UpdateEntityPosition(int id);
@@ -35,4 +36,5 @@ public:
 	void SendBunkerElevatorToFloor(int floor, bool force);
 	void ToggleFloodgate(std::string name, bool connect);
 	void BridgeToggle(int associatedPanel, bool disconnect);
+	void ExitSolveMode();
 };

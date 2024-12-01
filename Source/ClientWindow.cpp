@@ -12,12 +12,14 @@
 #include "../App/Version.h"
 #include "../App/Main.h"
 #include "Input.h"
+#include "Utilities.h"
+#include "Archipelago/Client/apclientpp/apclient.hpp"
 
 using json = nlohmann::json;
 
 ClientWindow* ClientWindow::_singleton = nullptr;
 
-#define SAVE_VERSION 8
+#define SAVE_VERSION 9
 
 #define CLIENT_WINDOW_WIDTH 700
 #define CLIENT_MENU_CLASS_NAME L"WitnessRandomizer"
@@ -47,6 +49,7 @@ ClientWindow* ClientWindow::_singleton = nullptr;
 
 #define IDC_BUTTON_RANDOMIZE 0x440
 #define IDC_BUTTON_LOADCREDENTIALS 0x441
+#define IDC_BUTTON_DISABLEDEATHLINK 0x442
 
 // Root index for keybind controls.
 #define IDC_BUTTON_KEYBIND 0x480
@@ -59,7 +62,9 @@ ClientWindow* ClientWindow::_singleton = nullptr;
 #define IDC_SETTING_HIGHCONTRAST 0x505
 #define IDC_SETTING_PANELEFFECTS 0x506
 #define IDC_SETTING_EXTRAINFO 0x507
+#define IDC_SETTING_DISABLED_EPS 0x508
 #define IDC_SETTING_JINGLES 0x510
+#define IDC_SETTING_WARPS 0x511
 
 
 void ClientWindow::create(HINSTANCE inAppInstance, int nCmdShow) {
@@ -78,6 +83,7 @@ ClientWindow* ClientWindow::get() {
 void ClientWindow::saveSettings()
 {
 	currentJingles = getSetting(ClientDropdownSetting::Jingles);
+	finalizedWarps = getSetting(ClientToggleSetting::Warps);
 
 	json data;
 
@@ -85,16 +91,19 @@ void ClientWindow::saveSettings()
 
 	data["challengeTimer"] = getSetting(ClientToggleSetting::ChallengeTimer);
 	data["collect"] = getSetting(ClientDropdownSetting::Collect);
-	data["disabled"] = getSetting(ClientDropdownSetting::DisabledPuzzles);
+	data["disabled"] = getSetting(ClientDropdownSetting::DisabledPanels);
+	data["disabled_eps"] = getSetting(ClientDropdownSetting::DisabledEPs);
 	data["colorblind"] = getSetting(ClientToggleSetting::ColorblindMode);
 	data["syncprogress"] = getSetting(ClientToggleSetting::SyncProgress);
 	data["highcontrast"] = getSetting(ClientToggleSetting::HighContrast);
 	data["paneleffects"] = getSetting(ClientToggleSetting::PanelEffects);
 	data["extrainfo"] = getSetting(ClientToggleSetting::ExtraInfo);
+	data["warps"] = getSetting(ClientToggleSetting::Warps);
 	data["jingles"] = getSetting(ClientDropdownSetting::Jingles);
 
 	InputWatchdog* input = InputWatchdog::get();
 	data["key_skipPuzzle"] = static_cast<int>(input->getCustomKeybind(CustomKey::SKIP_PUZZLE));
+	data["key_sleep"] = static_cast<int>(input->getCustomKeybind(CustomKey::SLEEP));
 
 	data["apSlotName"] = getSetting(ClientStringSetting::ApSlotName);
 
@@ -124,20 +133,25 @@ void ClientWindow::loadSettings()
 			setSetting(ClientToggleSetting::HighContrast, data.contains("highcontrast") ? data["highcontrast"].get<bool>() : false);
 			setSetting(ClientToggleSetting::PanelEffects, data.contains("paneleffects") ? data["paneleffects"].get<bool>() : false);
 			setSetting(ClientToggleSetting::ExtraInfo, data.contains("extrainfo") ? data["extrainfo"].get<bool>() : true);
+			setSetting(ClientToggleSetting::Warps, data.contains("warps") ? data["warps"].get<bool>() : false);
 
 			setSetting(ClientDropdownSetting::Collect, data.contains("collect") ? data["collect"].get<std::string>() : "Unchanged");
-			setSetting(ClientDropdownSetting::DisabledPuzzles, data.contains("disabled") ? data["disabled"].get<std::string>() : "Prevent Solve");
+			setSetting(ClientDropdownSetting::DisabledPanels, data.contains("disabled") ? data["disabled"].get<std::string>() : "Prevent Solve");
+			setSetting(ClientDropdownSetting::DisabledEPs, data.contains("disabled_eps") ? data["disabled_eps"].get<std::string>() : "Prevent Solve");
 			setSetting(ClientToggleSetting::ColorblindMode, data.contains("colorblind") ? data["colorblind"].get<bool>() : false);
 
 			// Load keybinds.
 			InputWatchdog* input = InputWatchdog::get();
 			input->loadCustomKeybind(CustomKey::SKIP_PUZZLE,
 				data.contains("key_skipPuzzle") ? static_cast<InputButton>(data["key_skipPuzzle"].get<int>()) : InputButton::KEY_T);
-			
+			input->loadCustomKeybind(CustomKey::SLEEP,
+				data.contains("key_sleep") ? static_cast<InputButton>(data["key_sleep"].get<int>()) : InputButton::KEY_E);
+
 			loadedSettings = true;
 		}
 
 		refreshKeybind(CustomKey::SKIP_PUZZLE);
+		refreshKeybind(CustomKey::SLEEP);
 	}
 
 	if (!loadedSettings) {
@@ -149,15 +163,19 @@ void ClientWindow::loadSettings()
 		setSetting(ClientToggleSetting::HighContrast, false);
 		setSetting(ClientToggleSetting::PanelEffects, false);
 		setSetting(ClientToggleSetting::ExtraInfo, true);
+		setSetting(ClientToggleSetting::Warps, false);
 
 		setSetting(ClientDropdownSetting::Collect, "Unchanged");
-		setSetting(ClientDropdownSetting::DisabledPuzzles, "Prevent Solve");
+		setSetting(ClientDropdownSetting::DisabledPanels, "Prevent Solve");
+		setSetting(ClientDropdownSetting::DisabledEPs, "Prevent Solve");
 		setSetting(ClientToggleSetting::ColorblindMode, false);
 
 		InputWatchdog* input = InputWatchdog::get();
 		input->loadCustomKeybind(CustomKey::SKIP_PUZZLE, InputButton::KEY_T);
-		
+		input->loadCustomKeybind(CustomKey::SLEEP, InputButton::KEY_E);
+
 		refreshKeybind(CustomKey::SKIP_PUZZLE);
+		refreshKeybind(CustomKey::SLEEP);
 	}
 
 #if _DEBUG
@@ -173,14 +191,14 @@ void ClientWindow::loadSettings()
 	setSetting(ClientStringSetting::ApPassword, "");
 }
 
-void ClientWindow::showMessageBox(std::string message) const {
+void ClientWindow::showMessageBox(std::string message, std::string caption) const {
 	logLine("Message box: " + message);
-	MessageBox(hwndRootWindow, Converty::Utf8ToWide(message).c_str(), NULL, MB_OK);
+	MessageBox(hwndRootWindow, Converty::Utf8ToWide(message).c_str(), Converty::Utf8ToWide(caption).c_str(), MB_OK);
 }
 
-bool ClientWindow::showDialogPrompt(std::string message) const {
+bool ClientWindow::showDialogPrompt(std::string message, std::string caption) const {
 	logLine("Dialog prompt: " + message);
-	return MessageBox(hwndRootWindow, Converty::Utf8ToWide(message).c_str(), NULL, MB_YESNO) == IDYES;
+	return MessageBox(hwndRootWindow, Converty::Utf8ToWide(message).c_str(), Converty::Utf8ToWide(caption).c_str(), MB_YESNO) == IDYES;
 }
 
 bool ClientWindow::getSetting(ClientToggleSetting setting) const {
@@ -221,10 +239,20 @@ void ClientWindow::refreshKeybind(const CustomKey& customKey) const {
 	writeStringToTextBox(input->getNameForInputButton(input->getCustomKeybind(customKey)), label);
 }
 
-void ClientWindow::setStatusMessage(std::string statusMessage) const
+void ClientWindow::setStatusMessage(std::string statusMessage)
 {
 	logLine("Dialog prompt: " + statusMessage);
+	normalStatusMessage = statusMessage;
 	writeStringToTextBox(statusMessage, hwndStatusText);
+}
+
+void ClientWindow::setActiveEntityString(std::string activeEntityString) const
+{
+	if (activeEntityString.empty()) {
+		writeStringToTextBox(normalStatusMessage, hwndStatusText);
+		return;
+	}
+	writeStringToTextBox("Active: " + activeEntityString + ".", hwndStatusText);
 }
 
 void ClientWindow::displaySeenAudioHints(std::vector<std::string> hints, std::vector<std::string> fullyClearedAreas, std::vector<std::string> deadChecks, std::vector<std::string> otherPeoplesDeadChecks) {
@@ -283,6 +311,16 @@ std::string ClientWindow::getJinglesSettingSafe()
 	return currentJingles;
 }
 
+bool ClientWindow::getWarpsSettingSafe()
+{
+	return finalizedWarps;
+}
+
+void ClientWindow::EnableDeathLinkDisablingButton(bool enable)
+{
+	EnableWindow(hwndDisableDeathlink, enable);
+}
+
 void ClientWindow::setWindowMode(ClientWindowMode mode)
 {
 	currentWindowMode = mode;
@@ -295,10 +333,12 @@ void ClientWindow::setWindowMode(ClientWindowMode mode)
 		EnableWindow(stringSettingTextBoxes.find(ClientStringSetting::ApPassword)->second, false);
 		EnableWindow(hwndApLoadCredentials, false);
 		EnableWindow(hwndApConnect, false);
+		EnableWindow(hwndDisableDeathlink, false);
 
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ColorblindMode)->second, false);
 		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::Collect)->second, false);
-		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledPuzzles)->second, false);
+		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledPanels)->second, false);
+		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledEPs)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::SyncProgress)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::HighContrast)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::PanelEffects)->second, false);
@@ -306,6 +346,7 @@ void ClientWindow::setWindowMode(ClientWindowMode mode)
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ChallengeTimer)->second, false);
 		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::Jingles)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ExtraInfo)->second, false);
+		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::Warps)->second, false);
 
 		for (auto keybindButton : customKeybindButtons) {
 			EnableWindow(keybindButton.second, false);
@@ -320,15 +361,18 @@ void ClientWindow::setWindowMode(ClientWindowMode mode)
 		EnableWindow(stringSettingTextBoxes.find(ClientStringSetting::ApPassword)->second, true);
 		EnableWindow(hwndApLoadCredentials, true);
 		EnableWindow(hwndApConnect, true);
+		EnableWindow(hwndDisableDeathlink, false);
 
 		// Enable randomization settings.
 
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ColorblindMode)->second, true);
 		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::Collect)->second, true);
-		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledPuzzles)->second, true);
+		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledPanels)->second, true);
+		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledEPs)->second, true);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::SyncProgress)->second, true);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::HighContrast)->second, true);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::PanelEffects)->second, true);
+		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::Warps)->second, true);
 
 		// Disable runtime settings.
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ChallengeTimer)->second, false);
@@ -361,10 +405,12 @@ void ClientWindow::setWindowMode(ClientWindowMode mode)
 		// Disable randomization settings.
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ColorblindMode)->second, false);
 		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::Collect)->second, false);
-		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledPuzzles)->second, false);
+		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledPanels)->second, false);
+		EnableWindow(dropdownBoxes.find(ClientDropdownSetting::DisabledEPs)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::SyncProgress)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::HighContrast)->second, false);
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::PanelEffects)->second, false);
+		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::Warps)->second, false);
 
 		// Enable runtime settings.
 		EnableWindow(toggleSettingCheckboxes.find(ClientToggleSetting::ChallengeTimer)->second, true);
@@ -597,6 +643,17 @@ void ClientWindow::addArchipelagoCredentials(int& currentY) {
 }
 
 void ClientWindow::addGameOptions(int& currentY) {
+	// Warps (remove with 0.5.2)
+	HWND hwndOptionWarps = CreateWindow(L"BUTTON", L"Unlockable Warps (0.5.2 feature preview)",
+		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_CHECKBOX | BS_MULTILINE,
+		CONTROL_MARGIN, currentY,
+		CLIENT_WINDOW_WIDTH - STATIC_TEXT_MARGIN, STATIC_TEXT_HEIGHT,
+		hwndRootWindow, (HMENU)IDC_SETTING_WARPS, hAppInstance, NULL);
+	toggleSettingButtonIds[ClientToggleSetting::Warps] = IDC_SETTING_WARPS;
+	toggleSettingCheckboxes[ClientToggleSetting::Warps] = hwndOptionWarps;
+
+	currentY += STATIC_TEXT_HEIGHT + LINE_SPACING;
+
 	// Colorblind option. This is 2 lines tall.
 	HWND hwndOptionColorblind = CreateWindow(L"BUTTON", L"Colorblind Mode - The colors on certain panels will be changed to be more accommodating to people with colorblindness. The puzzle contents will be identical apart from that.",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_CHECKBOX | BS_MULTILINE,
@@ -699,14 +756,37 @@ void ClientWindow::addGameOptions(int& currentY) {
 		CONTROL_MARGIN + SETTING_LABEL_WIDTH * 1.25, currentY,
 		SETTING_LABEL_WIDTH, STATIC_TEXT_HEIGHT * 6,
 		hwndRootWindow, (HMENU)IDC_SETTING_DISABLED, hAppInstance, NULL);
-	dropdownBoxes[ClientDropdownSetting::DisabledPuzzles] = hwndOptionDisabled;
-	dropdownIds[ClientDropdownSetting::DisabledPuzzles] = IDC_SETTING_DISABLED;
+	dropdownBoxes[ClientDropdownSetting::DisabledPanels] = hwndOptionDisabled;
+	dropdownIds[ClientDropdownSetting::DisabledPanels] = IDC_SETTING_DISABLED;
 
 	SendMessage(hwndOptionDisabled, CB_ADDSTRING, 0, (LPARAM)L"Unchanged");
 	SendMessage(hwndOptionDisabled, CB_ADDSTRING, 0, (LPARAM)L"Free Skip");
 	SendMessage(hwndOptionDisabled, CB_ADDSTRING, 0, (LPARAM)L"Auto-Skip");
 	SendMessage(hwndOptionDisabled, CB_ADDSTRING, 0, (LPARAM)L"Prevent Solve");
-	SendMessage(hwndOptionDisabled, CB_SELECTSTRING, 0, (LPARAM)L"Unchanged");
+	SendMessage(hwndOptionDisabled, CB_SELECTSTRING, 0, (LPARAM)L"Prevent Solve");
+
+	currentY += STATIC_TEXT_HEIGHT + LINE_SPACING * 2;
+
+	// Option for disabled EPs
+	HWND hwndOptionDisabledEPsText = CreateWindow(L"STATIC", L"Disabled EPs:",
+		WS_VISIBLE | WS_CHILD | SS_LEFT,
+		STATIC_TEXT_MARGIN, currentY + SETTING_LABEL_Y_OFFSET,
+		SETTING_LABEL_WIDTH * 1.25, STATIC_TEXT_HEIGHT,
+		hwndRootWindow, NULL, hAppInstance, NULL);
+
+	HWND hwndOptionDisabledEPs = CreateWindow(L"COMBOBOX", NULL,
+		CBS_DROPDOWNLIST | WS_VISIBLE | WS_CHILD,
+		CONTROL_MARGIN + SETTING_LABEL_WIDTH * 1.25, currentY,
+		SETTING_LABEL_WIDTH, STATIC_TEXT_HEIGHT * 6,
+		hwndRootWindow, (HMENU)IDC_SETTING_DISABLED_EPS, hAppInstance, NULL);
+	dropdownBoxes[ClientDropdownSetting::DisabledEPs] = hwndOptionDisabledEPs;
+	dropdownIds[ClientDropdownSetting::DisabledEPs] = IDC_SETTING_DISABLED_EPS;
+
+	SendMessage(hwndOptionDisabledEPs, CB_ADDSTRING, 0, (LPARAM)L"Unchanged");
+	SendMessage(hwndOptionDisabledEPs, CB_ADDSTRING, 0, (LPARAM)L"Solved on Obelisk");
+	SendMessage(hwndOptionDisabledEPs, CB_ADDSTRING, 0, (LPARAM)L"Glow on Hover");
+	SendMessage(hwndOptionDisabledEPs, CB_ADDSTRING, 0, (LPARAM)L"Prevent Solve");
+	SendMessage(hwndOptionDisabledEPs, CB_SELECTSTRING, 0, (LPARAM)L"Prevent Solve");
 
 	currentY += STATIC_TEXT_HEIGHT * 2;
 
@@ -729,6 +809,13 @@ void ClientWindow::addGameOptions(int& currentY) {
 	SendMessage(hwndOptionJingles, CB_ADDSTRING, 0, (LPARAM)L"Understated");
 	SendMessage(hwndOptionJingles, CB_ADDSTRING, 0, (LPARAM)L"Full");
 	SendMessage(hwndOptionJingles, CB_SELECTSTRING, 0, (LPARAM)L"Understated");
+
+	// Connect button. In line with the load credentials button.
+	hwndDisableDeathlink = CreateWindow(L"BUTTON", L"Disable DeathLink",
+		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+		CLIENT_WINDOW_WIDTH - CONTROL_MARGIN - 180, currentY,
+		180, CONTROL_HEIGHT,
+		hwndRootWindow, (HMENU)IDC_BUTTON_DISABLEDEATHLINK, hAppInstance, NULL);
 
 	currentY += STATIC_TEXT_HEIGHT + LINE_SPACING * 2;
 }
@@ -998,6 +1085,10 @@ LRESULT CALLBACK ClientWindow::handleWndProc(HWND hwnd, UINT message, WPARAM wPa
 			saveSettings();
 			break;
 		}
+		case IDC_SETTING_WARPS: {
+			toggleCheckbox(IDC_SETTING_WARPS);
+			break;
+		}
 		// Buttons.
 		case IDC_BUTTON_RANDOMIZE: {
 			Main::randomize();
@@ -1007,8 +1098,25 @@ LRESULT CALLBACK ClientWindow::handleWndProc(HWND hwnd, UINT message, WPARAM wPa
 			Main::loadCredentials();
 			break;
 		}
+		case IDC_BUTTON_DISABLEDEATHLINK: {
+			if (ap == NULL) break;
+
+			if (!showDialogPrompt("Do you want to disable Death Link permanently on for this slot? This only applies to the device you are playing on. Cannot be reverted, even by making a new save.", "Disable DeathLink")) break;
+
+			std::string deathLinkDisabledKey = "WitnessDisabledDeathLink" + std::to_string(ap->get_player_number()) + Utilities::wstring_to_utf8(Utilities::GetUUID());
+			ap->SetNotify({ deathLinkDisabledKey });
+			ap->Set(deathLinkDisabledKey, NULL, true, { {"replace", true} });
+			EnableDeathLinkDisablingButton(false);
+
+			break;
+		}
 // Keybindings.
 		case IDC_BUTTON_KEYBIND + static_cast<int>(CustomKey::SKIP_PUZZLE) : {
+			CustomKey key = static_cast<CustomKey>(LOWORD(wParam) - IDC_BUTTON_KEYBIND);
+			handleKeybind(key);
+			break;
+		}
+		case IDC_BUTTON_KEYBIND + static_cast<int>(CustomKey::SLEEP) : {
 			CustomKey key = static_cast<CustomKey>(LOWORD(wParam) - IDC_BUTTON_KEYBIND);
 			handleKeybind(key);
 			break;

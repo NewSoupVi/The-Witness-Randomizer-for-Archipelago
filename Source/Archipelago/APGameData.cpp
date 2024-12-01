@@ -5,7 +5,12 @@ RgbColor getColorByItemFlag(const __int64 flags) {
 	// Pick the appropriate color for this item based on its progression flags. Colors are loosely based on AP codes but
 	//   much more vivid for contrast. See https://github.com/ArchipelagoMW/Archipelago/blob/main/NetUtils.py for details.
 	if (flags & APClient::ItemFlags::FLAG_ADVANCEMENT) {
-		return { 188/255.f, 81/255.f, 224/255.f };
+		if (flags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
+			return { 240.f / 255.f, 210.f / 255.f, 0.0f };
+		}
+		else {
+			return { 188 / 255.f, 81 / 255.f, 224 / 255.f };
+		}
 	}
 	else if (flags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
 		// NOTE: "never exclude" here maps onto "useful" in the AP source.
@@ -28,7 +33,12 @@ RgbColor getColorByItemIdOrFlag(const __int64 itemId, const __int64 flags) {
 
 std::string getStringFromFlag(unsigned int flags) {
 	if (flags & APClient::ItemFlags::FLAG_ADVANCEMENT) {
-		return "Progression";
+		if (flags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
+			return "ProgUseful";
+		}
+		else {
+			return "Progression";
+		}
 	}
 	else if (flags & APClient::ItemFlags::FLAG_NEVER_EXCLUDE) {
 		// NOTE: "never exclude" here maps onto "useful" in the AP source.
@@ -39,5 +49,11 @@ std::string getStringFromFlag(unsigned int flags) {
 	}
 	else {
 		return "Filler";
+	}
+}
+
+void populateWarpLookup() {
+	for (Warp warp : allPossibleWarps) {
+		warpLookup[warp.name] = warp;
 	}
 }

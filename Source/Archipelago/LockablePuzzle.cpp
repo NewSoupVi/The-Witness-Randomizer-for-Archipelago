@@ -65,6 +65,37 @@ void LockablePanel::addMissingSymbolsDisplay(std::vector<float>& intersections, 
 			0.64f, 0.37f, 0.64f, 0.52f, 0.64f, 0.67f, 0.64f, 0.82f, 0.64f, 0.97f,  //top row
 		};
 	}
+	else if (id == 0x1C349) {
+		gridIntersections = {
+			0.1f, 0.11f, 0.3f, 0.11f, 0.5f, 0.11f, 0.7f, 0.11f, 0.9f, 0.11f, //bottom row
+			0.1f, 0.31f, 0.3f, 0.31f, 0.5f, 0.31f, 0.7f, 0.31f, 0.9f, 0.31f, //middle row
+		};
+
+		gridIntersectionFlags = {
+			0, 0, 0, 0, 0, //bottom row
+			0, 0, 0, 0, 0, //middle row
+		};
+
+		gridConnectionsA = {
+			0, 1, 2, 3, //horizontal bottom row
+			5, 6, 7, 8, //horizontal middle row
+			0, //vertical left column
+			1, //vertical 2 column
+			2, //vertical 3 column
+			3, //vertical 4 column
+			4, //vertical right column
+		};
+
+		gridConnectionsB = {
+			1, 2, 3, 4, //horizontal bottom row
+			6, 7, 8, 9, //horizontal middle row
+			5, //vertical left column
+			6, //vertical 2 column
+			7, //vertical 3 column
+			8, //vertical 4 column
+			9, //vertical right column
+		};
+	}
 	else if (fairly_thin_panels.count(id)) {
 		gridIntersections = {
 				0.3f, 0.1f, 0.3f, 0.3f, 0.3f, 0.5f, 0.3f, 0.7f, 0.3f, 0.9f, //bottom row
@@ -155,34 +186,37 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 	std::vector<int> gridDecorations(8, 0);
 	std::vector<int> gridDecorationsFlags(8, 0);
 
-	int i = 0;
+	bool oneRow = id == 0x09EEB || id == 0x1C349;
 
-	if (id == 0x09EEB) i = 1;
+	int i = 0;
+	if (oneRow) i = 1;
 
 	int position = 0;
 
 	int extraRows = 0;
 
-	if (hasStones && !state.unlockedStones) {
+	if (hasStones && !state.unlockedStones && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);;
 		gridDecorations[position] = Decoration::Stone | Decoration::Color::White;
-		i++; // 1
+		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasColoredStones && !state.unlockedColoredStones) {
+	if (hasColoredStones && !state.unlockedColoredStones && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Stone | Decoration::Color::Orange;
-		i++; // 2
+		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasStars && !state.unlockedStars) {
+	if (hasStars && !state.unlockedStars && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Star | Decoration::Color::Green;
-
-		i++; // 3
+		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasStarsWithOtherSymbol && !state.unlockedStarsWithOtherSimbol) {
+	if (hasStarsWithOtherSymbol && !state.unlockedStarsWithOtherSimbol && i < gridDecorations.size()) {
 		int intersectionOffset = intersectionFlags.size();
 
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
@@ -232,41 +266,47 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 		intersectionFlags.insert(intersectionFlags.end(), newIntersectionFlags.begin(), newIntersectionFlags.end());
 
 		i++; // 4
+		if (oneRow) i++;
 	}
 
-	if (hasErasers && !state.unlockedErasers) {
+	if (hasErasers && !state.unlockedErasers && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Eraser;
-		i++; // 5
+		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasTriangles && !state.unlockedTriangles) {
+	if (hasTriangles && !state.unlockedTriangles && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Triangle2 | Decoration::Yellow;
-		i++; // 6
+		i++;
+		if (oneRow) i++;
 	}
 
 	const int defaultLShape = 0x00170000;
 
-	if (hasTetris && !state.unlockedTetris) {
+	if (hasTetris && !state.unlockedTetris && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Poly | Decoration::Color::Yellow | defaultLShape;
-		i++; // 7
+		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasTetrisRotated && !state.unlockedTetrisRotated) {
+	if (hasTetrisRotated && !state.unlockedTetrisRotated && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Poly | Decoration::Color::Yellow | defaultLShape | Decoration::Can_Rotate;
-		i++; // 8 - Careful from here on!
+		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasTetrisNegative && !state.unlockedTetrisNegative && i != gridDecorations.size()) {
+	if (hasTetrisNegative && !state.unlockedTetrisNegative && i < gridDecorations.size()) {
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
 		gridDecorations[position] = Decoration::Poly | Decoration::Color::Blue | defaultLShape | Decoration::Negative;
 		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasSymmetry && !state.unlockedSymmetry && i != gridDecorations.size()) {
+	if (hasSymmetry && !state.unlockedSymmetry && i < gridDecorations.size()) {
 		int intersectionOffset = intersectionFlags.size();
 
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
@@ -317,9 +357,10 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 		connectionsB.insert(connectionsB.end(), symmetryConnectionsB.begin(), symmetryConnectionsB.end());
 
 		i++;
+		if (oneRow) i++;
 	}
 
-	if (hasArrows && !state.unlockedArrows && i != gridDecorations.size()) {
+	if (hasArrows && !state.unlockedArrows && i < gridDecorations.size()) {
 		int intersectionOffset = intersectionFlags.size();
 
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
@@ -348,9 +389,10 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 		connectionsB.insert(connectionsB.end(), arrowConnectionsB.begin(), arrowConnectionsB.end());
 
 		i++;
+		if (oneRow) i++;
 	}
 
-	if (state.keysInTheGame.count(id) && !state.keysReceived.count(id)) {
+	if (state.keysInTheGame.count(id) && !state.keysReceived.count(id) && i < gridDecorations.size()) {
 		int intersectionOffset = intersectionFlags.size();
 
 		position = (1 - (i % 2)) * 4 + ((int)i / 2);
@@ -384,6 +426,7 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 		connectionsB.insert(connectionsB.end(), keyConnectionsB.begin(), keyConnectionsB.end());
 
 		i++;
+		if (oneRow) i++;
 	}
 
 	if (hasColoredDots && !state.unlockedColoredDots) {
@@ -411,6 +454,7 @@ int LockablePanel::addPuzzleSymbols(const APState& state,
 	}
 	else if (hasDots && !state.unlockedDots) {
 		if (id == 0x09EEB) intersectionFlags[0] = IntersectionFlags::DOT;
+		else if (id == 0x1C349) intersectionFlags[6] = IntersectionFlags::DOT;
 		else intersectionFlags[11] = IntersectionFlags::DOT;
 	}
 
@@ -693,7 +737,7 @@ void LockablePanel::UpdateLock(APState state) {
 
 	if (puzzleIsMissingKey) {
 		text = "locked";
-		backgroundColor = { 0.6f, 0.55f, 0.2f, 1.0f };
+		backgroundColor = { 0.55f, 0.6f, 0.2f, 1.0f };
 		if (puzzleIsMissingSymbols) {
 			backgroundColor = { 0.5f, 0.25f, 0.0f, 1.0f };
 		}
@@ -807,7 +851,14 @@ void LockablePanel::UpdateLock(APState state) {
 		else
 		{
 			std::string text = "Locked";
-			createText(text, intersections, intersectionFlags, connectionsA, connectionsB, 0.5f - text.size() * 0.037f, 0.5f + text.size() * 0.037f, 0.455f, 0.545f);
+
+			if (id == 0x09E86) {
+				createText(text, intersections, intersectionFlags, connectionsA, connectionsB, 0.5f + text.size() * 0.037f,  0.5f - text.size() * 0.037f, 0.545f, 0.455f);
+			}
+			else
+			{
+				createText(text, intersections, intersectionFlags, connectionsA, connectionsB, 0.5f - text.size() * 0.037f, 0.5f + text.size() * 0.037f, 0.455f, 0.545f);
+			}
 
 			std::vector<int> decorations(memory->ReadPanelData<int>(id, NUM_DECORATIONS), 0);
 			std::vector<int> decorationsFlags(memory->ReadPanelData<int>(id, NUM_DECORATIONS), 0);
@@ -841,7 +892,12 @@ void LockablePanel::UpdateLock(APState state) {
 		}
 		else
 		{
-			createText(text, intersections, intersectionFlags, connectionsA, connectionsB, 0.1f, 0.9f, 0.1f, 0.4f);
+			if (id == 0x1C349) {
+				createText(text, intersections, intersectionFlags, connectionsA, connectionsB, 0.12f, 0.88f, 0.07f, 0.33f);
+			}
+			else {
+				createText(text, intersections, intersectionFlags, connectionsA, connectionsB, 0.1f, 0.9f, 0.1f, 0.4f);
+			}
 		}
 
 		memory->WritePanelData<int>(id, GRID_SIZE_X, { width + 1 });

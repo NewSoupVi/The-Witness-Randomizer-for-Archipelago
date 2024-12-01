@@ -57,6 +57,10 @@ public:
 
 	DWORD getProcessID();
 
+	void resetComputedAddresses() {
+		_computedAddresses = {};
+	};
+
 	// Reads data from program memory relative to the base address of the program.
 	bool ReadRelative(LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize) {
 		std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -171,6 +175,7 @@ public:
 
 	template <class T>
 	void WritePanelData(int panel, int offset, const std::vector<T>& data, bool forceRecalculatePointer) {
+		_arraySizes.erase(std::make_pair(panel, offset)); // This might be an array pointer, in which case we need to invalidate
 		WriteData<T>({ GLOBALS, 0x18, panel * 8, offset }, data, forceRecalculatePointer);
 	}
 
@@ -182,6 +187,7 @@ public:
 	void WriteMovementSpeed(float speed);
 
 	void EnableMovement(bool enable);
+	void FloatWithoutMovement(bool enable);
 
 	void EnableVision(bool enable);
 
@@ -189,15 +195,20 @@ public:
 
 	void EnableSolveMode(bool enable);
 
-	void ExitSolveMode();
-
 	std::vector<float> ReadPlayerPosition() {
 		return this->ReadData<float>({ CAMERAPOSITION }, 3);
+	}
+
+	std::vector<float> ReadDesiredMovementDirection() {
+		return this->ReadData<float>({ DESIREDMOVEMENTDIRECTION }, 3);
 	}
 
 	std::vector<float> ReadCameraAngle() {
 		return this->ReadData<float>({ CAMERAANG }, 2);
 	}
+
+	void WritePlayerPosition(std::vector<float> playerPosition);
+	void WriteCameraAngle(std::vector<float> cameraAngle);
 
 	void OpenDoor(int id) {
 		CallVoidFunction(id, openDoorFunction);
@@ -257,7 +268,8 @@ public:
 	void MakeEPGlow(std::string name, std::vector<byte> patternPointBytes);
 
 	void StopDesertLaserPropagation();
-	void SetInfiniteChallenge(bool enable);
+	bool SetInfiniteChallenge(bool enable);
+	void ForceStopChallenge();
 
 	void RemoveMesh(int id);
 	void DoFullPositionUpdate();
@@ -280,6 +292,7 @@ public:
 	int GAMELIB_RENDERER;
 	int RUNSPEED;
 	int CAMERAPOSITION;
+	int DESIREDMOVEMENTDIRECTION;
 
 	uint64_t powerNextFunction;
 	uint64_t initPanelFunction;
@@ -309,7 +322,7 @@ public:
 	int zeroSpeedRelativeAddress;
 	uint64_t _recordPlayerUpdate;
 	uint64_t _getSoundFunction;
-	uint64_t _bytesLengthChallenge;
+	uint64_t _bytesLengthChallenge = 0;
 	uint64_t completeEPFunction;
 	uint64_t updateJunctionsFunction;
 	uint64_t powerGaugeFunction;
@@ -335,11 +348,13 @@ public:
 	uint64_t windmillCurrentlyTurning;
 	uint64_t windmillMaxTurnSpeed;
 	uint64_t windmillCurrentTurnSpeed;
+	uint64_t stopChallengeFunction;
 
 	uint64_t globalTextureCatalog;
 	uint64_t acquireByNameFunction;
 	uint64_t loadTextureMapFunction;
 	uint64_t loadPackageFunction;
+	uint64_t activateMarkerFunction;
 
 	std::vector<int> ACTIVEPANELOFFSETS;
 	int ACCELERATION;

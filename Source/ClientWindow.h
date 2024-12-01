@@ -14,12 +14,14 @@ enum ClientToggleSetting {
 	SyncProgress,
 	HighContrast,
 	PanelEffects,
-	ExtraInfo
+	ExtraInfo,
+	Warps,
 };
 
 enum ClientDropdownSetting {
 	Collect,
-	DisabledPuzzles,
+	DisabledPanels,
+	DisabledEPs,
 	Jingles,
 };
 
@@ -34,6 +36,8 @@ enum ClientWindowMode {
 	PreConnect,		// Pending connection to AP and randomization.
 	Randomized			// Connected to AP and randomized.
 };
+
+class APClient;
 
 class ClientWindow {
 
@@ -52,11 +56,11 @@ public:
 	void loadSettings();
 
 	// Shows an informational dialog box and blocks execution until it is dismissed.
-	void showMessageBox(std::string message) const;
+	void showMessageBox(std::string message, std::string caption) const;
 
 	// Shows a yes/no dialog and blocks execution until it is dismissed. Returns whether or not
 	//   the user clicked yes.
-	bool showDialogPrompt(std::string message) const;
+	bool showDialogPrompt(std::string message, std::string caption) const;
 
 	bool getSetting(ClientToggleSetting setting) const;
 	void setSetting(ClientToggleSetting setting, bool value) const;
@@ -70,11 +74,21 @@ public:
 	void refreshKeybind(const CustomKey& customKey) const;
 
 	// Sets the status message field.
-	void setStatusMessage(std::string statusMessage) const;
+	void setStatusMessage(std::string statusMessage);
+
+	// Display active entity name.
+	void setActiveEntityString(std::string activeEntityString) const;
 
 	// Display seen Audio Logs.
 	void displaySeenAudioHints(std::vector<std::string> hints, std::vector<std::string> fullyClearedAreas, std::vector<std::string> deadChecks, std::vector<std::string> otherPeoplesDeadChecks);
 	std::string getJinglesSettingSafe();
+	bool getWarpsSettingSafe();
+
+	void EnableDeathLinkDisablingButton(bool enable);
+
+	void passAPClient(APClient* ap) {
+		this->ap = ap;
+	}
 
 	void setWindowMode(ClientWindowMode mode);
 
@@ -121,7 +135,7 @@ private:
 
 	HINSTANCE hAppInstance;
 	HWND hwndRootWindow;
-	HWND hwndApLoadCredentials, hwndApConnect;
+	HWND hwndApLoadCredentials, hwndApConnect, hwndDisableDeathlink;
 	HWND hwndStatusText, hwndHintsView, hwndHintsSeparator1, hwndClearedAreasView, hwndHintsSeparator2, hwndClearedChecksView;
 
 	HWND hwndTEMPfocusWindow;
@@ -139,6 +153,7 @@ private:
 	std::string lastHintText = "";
 	std::string lastDeadAreasText = "";
 	std::string lastDeadChecksText = "";
+	std::string normalStatusMessage = "";
 
 	// HACK: Due to things like menu bar thickness, the working area of the root window won't
 	//   actually be whatever we request. As such, we need to store the delta between the requested
@@ -153,7 +168,10 @@ private:
 	int currentWidth;
 	int currentHeight;
 
+	APClient* ap = NULL;
+
 	std::string currentJingles = "Understated";
+	bool finalizedWarps = false;
 };
 
 inline std::ofstream clientLog = std::ofstream("WitnessRandomizerLog.txt");

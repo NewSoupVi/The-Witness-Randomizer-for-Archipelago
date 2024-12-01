@@ -15,10 +15,12 @@ class APRandomizer {
 		int FinalPanel = 0;
 		bool SyncProgress = false;
 		std::string CollectedPuzzlesBehavior = "Unchanged";
-		std::string DisabledPuzzlesBehavior = "Prevent Solve";
+		std::string DisabledPanelsBehavior = "Prevent Solve";
+		std::string DisabledEPsBehavior = "Prevent Solve";
 
 		int PuzzleRandomization = 2;
 		bool UnlockSymbols = false;
+		std::vector<std::string> UnlockableWarps = {};
 		bool EarlyUTM = false;
 		bool DisableNonRandomizedPuzzles = false;
 		bool EPShuffle = false;
@@ -28,7 +30,7 @@ class APRandomizer {
 		int PanelHuntPostgame = 0;
 		bool DeathLink;
 		int DeathLinkAmnesty = 0;
-		bool ElevatorsComeToYou = false;
+		std::set<std::string> ElevatorsComeToYou = {};
 
 		int mostRecentItemId = -1;
 
@@ -72,6 +74,7 @@ class APRandomizer {
 		std::map<int, inGameHint> inGameHints;
 		std::map<int, int> panelIdToLocationIdReverse;
 		std::set<int> disabledEntities;
+		std::set<int> doorsToSkipLocking;
 
 		std::set<int> huntEntities;
 

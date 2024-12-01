@@ -1,5 +1,8 @@
 #include "APRandomizer.h"
 
+#include <locale>
+#include <codecvt>
+
 #include "../ClientWindow.h"
 #include "../HUDManager.h"
 #include "../Panels.h"
@@ -16,6 +19,7 @@
 #include "LockablePuzzle.h"
 #include "../Utilities.h"
 #include "SkipSpecialCases.h"
+#include "APAudioPlayer.h"
 
 APRandomizer::APRandomizer() {
 	panelLocker = new PanelLocker();
@@ -23,11 +27,17 @@ APRandomizer::APRandomizer() {
 
 bool APRandomizer::Connect(std::string& server, std::string& user, std::string& password) {
 	ClientWindow* clientWindow = ClientWindow::get();
+	clientWindow->logLine("Loading custom audio files.");
+	APAudioPlayer::get();
+
 	clientWindow->logLine("Connecting");
 	std::string uri = buildUri(server);
 
 	if (ap) ap->reset();
-	ap = new APClient("uuid", "The Witness", uri);
+	std::wstring uuid = Utilities::GetUUID();
+	ap = new APClient(Utilities::wstring_to_utf8(uuid), "The Witness", uri);
+
+	ClientWindow::get()->passAPClient(ap);
 
 	bool connected = false;
 	bool hasConnectionResult = false;
@@ -36,7 +46,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	ap->set_room_info_handler([&]() {
 		const int item_handling_flags_all = 7;
 
-		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 5, 0});
+		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 5, 1});
 	});
 
 	ap->set_location_checked_handler([&](const std::list<int64_t>& locations) {
@@ -49,14 +59,14 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	});
 
 	ap->set_slot_disconnected_handler([&]() {
-		async->getHudManager()->queueBannerMessage("Randomiser has been disconnected.");
+		HudManager::get()->queueBannerMessage("Randomiser has been disconnected.");
 		std::string message = "The randomizer seems to have unexpectedly disconnected. Please reload both the game and the randomizer.";
 
 		MessageBoxA(GetActiveWindow(), message.c_str(), NULL, MB_OK);
 	});
 
 	ap->set_socket_disconnected_handler([&]() {
-		async->getHudManager()->queueBannerMessage("Randomiser has been disconnected.");
+		HudManager::get()->queueBannerMessage("Randomiser has been disconnected.");
 		std::string message = "The randomizer seems to have unexpectedly disconnected. Please reload both the game and the randomizer.";
 
 		MessageBoxA(GetActiveWindow(), message.c_str(), NULL, MB_OK);
@@ -83,6 +93,26 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		EarlyUTM = slotData.contains("early_secret_area") ? slotData["early_secret_area"] == true : false;
 		if (slotData.contains("mountain_lasers")) MountainLasers = slotData["mountain_lasers"];
 		if (slotData.contains("challenge_lasers")) ChallengeLasers = slotData["challenge_lasers"];
+		bool unlockableWarpsIsOn = slotData.contains("unlockable_warps") ? slotData["unlockable_warps"] == true : false;
+		unlockableWarpsIsOn = unlockableWarpsIsOn || clientWindow->getWarpsSettingSafe();
+		UnlockableWarps = { 
+			"Tutorial First Hallway",
+			"Desert Outside",
+			"Outside Keep",
+			"Town",
+			"Mountaintop",
+			"Caves",
+			"Treehouse Entry Area",
+			"Quarry",
+			"Outside Symmetry Island",
+			"Shipwreck",
+			"Swamp Platform",
+			"Jungle",
+			"Outside Bunker",
+		};
+		if (!unlockableWarpsIsOn) {
+			UnlockableWarps = {};
+		}
 
 		if (slotData.contains("panel_hunt_required_absolute")) RequiredHuntEntities = slotData["panel_hunt_required_absolute"];
 		PanelHuntPostgame = slotData.contains("panel_hunt_postgame") ? (int) slotData["panel_hunt_postgame"] : 0;
@@ -93,7 +123,14 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		DeathLinkAmnesty = slotData.contains("death_link_amnesty") ? (int) slotData["death_link_amnesty"] : 0;
 		if (!DeathLink) DeathLinkAmnesty = -1;
 
-		ElevatorsComeToYou = slotData.contains("elevators_come_to_you") ? slotData["elevators_come_to_you"] == true : false;
+		if (slotData["elevators_come_to_you"].is_array()) {
+			for (std::string key : slotData["elevators_come_to_you"]) {
+				ElevatorsComeToYou.insert(key);
+			}
+		}
+		else if (slotData["elevators_come_to_you"] == true) {
+			ElevatorsComeToYou = { "Quarry Elevator", "Swamp Long Bridge", "Bunker Elevator", "Town Maze Rooftop Bridge" };
+		}
 
 		if (!UnlockSymbols) {
 			state.unlockedArrows = true;
@@ -144,34 +181,6 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			panelIdToLocationIdReverse.insert({ locationId, panelId });
 		}
 
-		clientWindow->logLine("Connect: Getting Obelisk Side to EPs.");
-		if (slotData.contains("obelisk_side_id_to_EPs")) {
-			for (auto& [key, val] : slotData["obelisk_side_id_to_EPs"].items()) {
-				int sideId = std::stoul(key, nullptr, 10);
-				std::set<int> v = val;
-
-				obeliskSideIDsToEPHexes.insert({ sideId, v });
-			}
-		}
-
-		clientWindow->logLine("Connect: Getting EP to name.");
-		if (slotData.contains("ep_to_name")) {
-			for (auto& [key, val] : slotData["ep_to_name"].items()) {
-				int sideId = std::stoul(key, nullptr, 16);
-
-				entityToName.insert({ sideId, val });
-			}
-		}
-
-		clientWindow->logLine("Connect: Getting Entity to Name.");
-		if (slotData.contains("entity_to_name")) {
-			for (auto& [key, val] : slotData["entity_to_name"].items()) {
-				int sideId = std::stoul(key, nullptr, 16);
-
-				entityToName.insert({ sideId, val });
-			}
-		}
-
 		clientWindow->logLine("Connect: Getting Precompleted Puzzles.");
 		if (slotData.contains("precompleted_puzzles")) {
 			for (int key : slotData["precompleted_puzzles"]) {
@@ -203,17 +212,59 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 				std::set<int> v = val;
 
 				itemIdToDoorSet.insert({ itemId, v });
-				
-				for (int door : v) {
-					doorToItemId.insert({ door, itemId });
+			}
+		}
+
+		clientWindow->logLine("Connect: Getting Obelisk Side to EPs.");
+		if (slotData.contains("obelisk_side_id_to_EPs")) {
+			for (auto& [key, val] : slotData["obelisk_side_id_to_EPs"].items()) {
+				int sideId = std::stoul(key, nullptr, 10);
+				std::set<int> v = val;
+				std::set<int> non_disabled_ones = {};
+				for (int ep : v) {
+					if (disabledEntities.contains(ep)) continue;
+					non_disabled_ones.insert(ep);
+				}
+				if (!non_disabled_ones.empty()) {
+					obeliskSideIDsToEPHexes.insert({ sideId, non_disabled_ones });
 				}
 			}
 		}
 
+		// Backcompat to 0.4.5
 		clientWindow->logLine("Connect: Getting door hexes in the pool.");
 		if (slotData.contains("door_hexes_in_the_pool")) {
+			// Backcompat for Obelisk Keys
+			for (auto [id, doorSet] : itemIdToDoorSet) {
+				for (int door : doorSet) {
+					if (allEPs.contains(door)) {
+						doorToItemId[door] = id;
+					}
+				}
+			}
+
 			for (int key : slotData["door_hexes_in_the_pool"]) {
 				doorsActuallyInTheItemPool.insert(key);
+			}
+		}
+
+		clientWindow->logLine("Connect: Getting door hexes in the pool.");
+		if (slotData.contains("doors_that_shouldnt_be_locked")) {
+			for (int key : slotData["doors_that_shouldnt_be_locked"]) {
+				doorsToSkipLocking.insert(key);
+			}
+		}
+
+		clientWindow->logLine("Connect: Getting item id to door hexes actually in the pool.");
+		if (slotData.contains("door_items_in_the_pool")) {
+			for (int doorItemId : slotData["door_items_in_the_pool"]) {
+				for (int associatedDoorHex : itemIdToDoorSet[doorItemId]) {
+					if (disabledEntities.count(associatedDoorHex) || doorsToSkipLocking.count(associatedDoorHex)) continue;
+
+					doorsActuallyInTheItemPool.insert(associatedDoorHex);
+
+					doorToItemId.insert({ associatedDoorHex, doorItemId });
+				}
 			}
 		}
 
@@ -287,6 +338,9 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 				int32_t player_no = 0;
 				bool extraInfoFound = false;
 
+				std::string area = "";
+				bool allowScout = true;
+
 				for (int i = 0; i < val.size(); i++) {
 					auto token = val[i];
 
@@ -306,22 +360,19 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 					}
 					else {
 						std::string line = token;
-						if (!line.empty()) {
+						if (line.rfind("containing_area:", 0) == 0) {
+							area = line.substr(16);
+							allowScout = false;
+						}
+						else if (!line.empty()) {
 							if (message != "") message.append(" ");
 							message.append(line);
 						}
 					}
 				}
 
-				inGameHints.insert({ logId, {message, location_id, player_no, "", -1, -1, true, true} });
+				inGameHints.insert({ logId, {message, location_id, player_no, area, -1, -1, true, allowScout} });
 			}
-		}
-
-		if (DeathLink) {
-			clientWindow->logLine("Connect: Setting DeathLink.");
-			std::list<std::string> newTags = { "DeathLink" };
-
-			ap->ConnectUpdate(false, 7, true, newTags);
 		}
 
 		connected = true;
@@ -337,7 +388,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		connected = false;
 		hasConnectionResult = true;
 
-		ClientWindow::get()->showMessageBox("Connection failed: " + errorString);
+		ClientWindow::get()->showMessageBox("Connection failed: " + errorString, "Error");
 	});
 
 	ap->set_bounced_handler([&](nlohmann::json packet) {
@@ -370,8 +421,8 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 
 	ap->set_retrieved_handler([&](const std::map <std::string, nlohmann::json> response) {
 		for (auto [key, value] : response) {
-			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, SyncProgress);
-			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, SyncProgress);
+			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value);
+			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value);
 		}
 	});
 
@@ -380,13 +431,20 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			async->SetValueFromServer(key, value);
 			return;
 		}
+		
+		if (key.find("WitnessDisabledDeathLink") != std::string::npos) {
+			async->SetValueFromServer(key, value);
+			return;
+		}
 
-		if (key.find("WitnessLaserHint") != std::string::npos) async->HandleLaserHintResponse(key, value, SyncProgress); // Do not flip
-		else if (key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value, SyncProgress); // Do not flip
-		else if (key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value, SyncProgress);
-		else if (key.find("WitnessAudioLog") != std::string::npos) async->HandleAudioLogResponse(key, value, SyncProgress);
-		else if (key.find("WitnessSolvedPanels") != std::string::npos) async->HandleSolvedPanelsResponse(value, SyncProgress);
-		else if (key.find("WitnessOpenedDoors") != std::string::npos) async->HandleOpenedDoorsResponse(value, SyncProgress);
+		if (key.find("WitnessLaserHint") != std::string::npos) async->HandleLaserHintResponse(key, value); // Do not flip
+		else if (key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value); // Do not flip
+		else if (key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value);
+		else if (key.find("WitnessAudioLog") != std::string::npos) async->HandleAudioLogResponse(key, value);
+		else if (key.find("WitnessSolvedPanels") != std::string::npos) async->HandleSolvedPanelsResponse(value);
+		else if (key.find("WitnessHuntEntityStatus") != std::string::npos) async->HandleHuntEntityResponse(value);
+		else if (key.find("WitnessOpenedDoors") != std::string::npos) async->HandleOpenedDoorsResponse(value);
+		else if (key.find("WitnessUnlockedWarps") != std::string::npos) async->HandleWarpResponse(value);
 	});
 
 	ap->set_print_json_handler([&](const APClient::PrintJSONArgs jsonArgs) {
@@ -433,7 +491,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			std::string isFor = "";
 			if (!receiving) isFor = " for " + player;
 
-			if(!found) async->getHudManager()->queueNotification("Hint: " + itemName + isFor + " is on " + locationName + ".");
+			if(!found) HudManager::get()->queueNotification("Hint: " + itemName + isFor + " is on " + locationName + ".");
 		}
 		else {
 			int location = item.location;
@@ -442,13 +500,19 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			int panelId = panelIdToLocationIdReverse[location];
 
 			if (panelIdToLocationIdReverse.count(location) && !async->CheckPanelHasBeenSolved(panelId)) {
-				async->getHudManager()->queueNotification("(Collect) Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
+				HudManager::get()->queueNotification("(Collect) Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
 			}
 			else
 			{
-				async->SetItemRewardColor(findResult->first, item.flags);
-				if (!(item.item == ITEM_BONK_TRAP && receiving)) async->PlaySentJingle(findResult->first, item.flags);
-				if(!receiving) async->getHudManager()->queueNotification("Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
+				if (item.item == ITEM_BONK_TRAP && receiving) {
+					// Bonk will be played on item receive, but we should not interrupt ramping
+					if (allEPs.count(panelId)) APAudioPlayer::get()->ResetRampingCooldownEP();
+					else APAudioPlayer::get()->ResetRampingCooldownPanel();
+				}
+				else {
+					async->PlaySentJingle(findResult->first, item.flags);
+				}
+				if(!receiving) HudManager::get()->queueNotification("Sent " + itemName + " to " + player + ".", getColorByItemFlag(item.flags));
 			}
 		}
 	});
@@ -460,12 +524,12 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 
 	clientWindow->logLine("Connect: Waiting for connection result.");
 	while (!hasConnectionResult) {
-		if (DateTime::since(start).count() > 5000) { //5 seconnd timeout on waiting for response from server
+		if (DateTime::since(start).count() > 10000) { //5 seconnd timeout on waiting for response from server
 			connected = false;
 			hasConnectionResult = true;
 
 			std::string errorMessage = "Timeout while connecting to server: " + uri;
-			ClientWindow::get()->showMessageBox(errorMessage);
+			ClientWindow::get()->showMessageBox(errorMessage, "Error");
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -536,17 +600,47 @@ void APRandomizer::PostGeneration() {
 		memory->PowerGauge(0x003C4, 0x3F, 3);
 		memory->PowerGauge(0x003C4, 0x3C, 2);
 		memory->PowerGauge(0x003C4, 0x51, 1);
+
+		memory->WritePanelData(0x3F, MOUNT_PARENT_ID, 0);
+		memory->WritePanelData<float>(0x3F, POSITION, { 0.0f, 0.0f, -200.0f });
+		memory->WritePanelData(0x3C, MOUNT_PARENT_ID, 0);
+		memory->WritePanelData<float>(0x3C, POSITION, { 0.0f, 0.0f, -200.0f });
+		memory->WritePanelData(0x51, MOUNT_PARENT_ID, 0);
+		memory->WritePanelData<float>(0x51, POSITION, { 0.0f, 0.0f, -200.0f });
+
+		ASMPayloadManager::get()->UpdateEntityPosition(0x3F);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x3C);
+		ASMPayloadManager::get()->UpdateEntityPosition(0x51);
+
+		// Make this obviously unsolvable to the bottom //
+		Panel panel = Panel(0x0A3B5);
+		std::vector<Endpoint> newEndpoints = {};
+		for (auto endpoint : panel._endpoints) {
+			if (endpoint.GetY() < 3) {
+				newEndpoints.push_back(endpoint);
+			}
+		}
+		panel._endpoints = newEndpoints;
+		panel.Write();
+		if (async->DoorWasLocked(0x03BA2)) {
+			Special::clearTarget(0x0A3B5);
+		}
+		else {
+			Special::setTarget(0x0A3B5, 0x3BA7);
+		}
 	}
 
 	// Write gameplay relevant client options into datastorage
 
 	clientWindow->logLine("Putting Settings in Datastorage.");
 	ap->Set("WitnessSetting" + std::to_string(ap->get_player_number()) + "-Collect", NULL, false, {{"replace", CollectedPuzzlesBehavior}});
-	ap->Set("WitnessSetting" + std::to_string(ap->get_player_number()) + "-Disabled", NULL, false, {{"replace", DisabledPuzzlesBehavior} });
+	ap->Set("WitnessSetting" + std::to_string(ap->get_player_number()) + "-Disabled", NULL, false, {{"replace", DisabledPanelsBehavior} });
+	ap->Set("WitnessSetting" + std::to_string(ap->get_player_number()) + "-DisabledEPs", NULL, false, { {"replace", DisabledEPsBehavior} });
 	ap->Set("WitnessSetting" + std::to_string(ap->get_player_number()) + "-SyncProgress", NULL, false, { {"replace", SyncProgress} });
 
-	ap->SetNotify({ "WitnessDeathLink" + std::to_string(ap->get_player_number()) });
-	ap->Set("WitnessDeathLink" + std::to_string(ap->get_player_number()), NULL, true, { {"default", 0} });
+	std::string deathLinkDisabledKey = "WitnessDisabledDeathLink" + std::to_string(ap->get_player_number()) + Utilities::wstring_to_utf8(Utilities::GetUUID());
+	ap->SetNotify({ deathLinkDisabledKey });
+	ap->Set(deathLinkDisabledKey, false, true, { {"default", false} });
 
 	std::set<int64_t> allLocations;
 	std::set<int64_t> missingLocations = ap->get_missing_locations();
@@ -606,7 +700,6 @@ void APRandomizer::PostGeneration() {
 	if (FinalPanel == 0x03629) {
 		Special::writeGoalCondition(0x0042D, " Goal:", "Panel Hunt", " Lasers:", MountainLasers, ChallengeLasers);
 		Special::DrawSingleVerticalLine(0x03629);
-		memory->WritePanelData<float>(0x03629, MAX_BROADCAST_DISTANCE, -1);
 		Special::DrawSingleVerticalLine(0x03505);
 	}
 	else if (FinalPanel == 0x09F7F) {
@@ -664,7 +757,7 @@ void APRandomizer::PostGeneration() {
 	}
 
 	clientWindow->logLine("Randomization finished.");
-	async->getHudManager()->queueBannerMessage("Randomized!");
+	HudManager::get()->queueBannerMessage("Randomized!");
 	async->PlayFirstJingle();
 
 	clientWindow->logLine("Starting APWatchdog.");
@@ -759,7 +852,7 @@ void APRandomizer::RestoreOriginals() {
 }
 
 void APRandomizer::GenerateNormal() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, inGameHints, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, ElevatorsComeToYou, CollectedPuzzlesBehavior, DisabledPuzzlesBehavior, disabledEntities, huntEntities, itemIdToDoorSet, progressiveItems, DeathLinkAmnesty, doorToItemId);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, inGameHints, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, ElevatorsComeToYou, CollectedPuzzlesBehavior, DisabledPanelsBehavior, DisabledEPsBehavior, disabledEntities, huntEntities, itemIdToDoorSet, progressiveItems, DeathLinkAmnesty, doorToItemId, UnlockableWarps, SyncProgress);
 	SeverDoors();
 
 	if (DisableNonRandomizedPuzzles)
@@ -767,7 +860,7 @@ void APRandomizer::GenerateNormal() {
 }
 
 void APRandomizer::GenerateVariety() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, inGameHints, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, ElevatorsComeToYou, CollectedPuzzlesBehavior, DisabledPuzzlesBehavior, disabledEntities, huntEntities, itemIdToDoorSet, progressiveItems, DeathLinkAmnesty, doorToItemId);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, inGameHints, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, ElevatorsComeToYou, CollectedPuzzlesBehavior, DisabledPanelsBehavior, DisabledEPsBehavior, disabledEntities, huntEntities, itemIdToDoorSet, progressiveItems, DeathLinkAmnesty, doorToItemId, UnlockableWarps, SyncProgress);
 	SeverDoors();
 
 	Memory::get()->PowerNext(0x03629, 0x36);
@@ -777,7 +870,7 @@ void APRandomizer::GenerateVariety() {
 }
 
 void APRandomizer::GenerateHard() {
-	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, entityToName, inGameHints, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, ElevatorsComeToYou, CollectedPuzzlesBehavior, DisabledPuzzlesBehavior, disabledEntities, huntEntities, itemIdToDoorSet, progressiveItems, DeathLinkAmnesty, doorToItemId);
+	async = new APWatchdog(ap, panelIdToLocationId, FinalPanel, panelLocker, inGameHints, obeliskSideIDsToEPHexes, EPShuffle, PuzzleRandomization, &state, solveModeSpeedFactor, ElevatorsComeToYou, CollectedPuzzlesBehavior, DisabledPanelsBehavior, DisabledEPsBehavior, disabledEntities, huntEntities, itemIdToDoorSet, progressiveItems, DeathLinkAmnesty, doorToItemId, UnlockableWarps, SyncProgress);
 	SeverDoors();
 
 	//Mess with Town targets
