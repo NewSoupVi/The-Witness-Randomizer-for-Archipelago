@@ -1615,7 +1615,9 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 				if (!seenLasers.count(laserID)) {
 					WritePanelData<float>(laserID, 0x108, { 1.0001f });
 					int64_t locationId = inGameHints[laserID].locationID;
-					if (locationId != -1 && inGameHints[laserID].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({locationId}, 2, inGameHints[laserID].playerNo);
+					if (locationId != -1 && inGameHints[laserID].allowScout && !checkedLocations.count(locationId)) {
+						ap->CreateHint(locationId, inGameHints[laserID].playerNo);
+					}
 					ap->Set("WitnessLaserHint" + std::to_string(pNO) + "-" + std::to_string(laserID), NULL, false, { {"replace", true} });
 					seenLasers.insert(laserID);
 				}
@@ -1632,7 +1634,9 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 			seenMessages.insert(inGameHints[logId]);
 			if (!seenAudioLogs.count(logId)) {
 				int64_t locationId = inGameHints[logId].locationID;
-				if (locationId != -1 && inGameHints[logId].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({ locationId }, 2, inGameHints[logId].playerNo);
+				if (locationId != -1 && inGameHints[logId].allowScout && !checkedLocations.count(locationId)) {
+					ap->CreateHint(locationId, inGameHints[logId].playerNo);
+				}
 				ap->Set("WitnessAudioLog" + std::to_string(pNO) + "-" + std::to_string(logId), NULL, false, { {"replace", true} });
 				seenAudioLogs.insert(logId);
 			}

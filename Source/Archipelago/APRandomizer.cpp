@@ -642,13 +642,6 @@ void APRandomizer::PostGeneration() {
 	ap->SetNotify({ deathLinkDisabledKey });
 	ap->Set(deathLinkDisabledKey, false, true, { {"default", false} });
 
-	std::set<int64_t> allLocations;
-	std::set<int64_t> missingLocations = ap->get_missing_locations();
-	std::set<int64_t> checkedLocations = ap->get_checked_locations();
-	allLocations.insert(missingLocations.begin(), missingLocations.end());
-	allLocations.insert(checkedLocations.begin(), checkedLocations.end());
-	std::list<int64_t> allLocationsList(allLocations.begin(), allLocations.end());
-
 	// :)
 	if (Utilities::isAprilFools()) {
 		for (int panel : trivial_panels) {
@@ -764,8 +757,6 @@ void APRandomizer::PostGeneration() {
 	async->start();
 
 	clientWindow->logLine("Firing Locationscout.");
-	ap->LocationScouts(allLocationsList);
-	ap->LocationScouts(allLocationsList, 2, 2);
 }
 
 void APRandomizer::HighContrastMode() {
