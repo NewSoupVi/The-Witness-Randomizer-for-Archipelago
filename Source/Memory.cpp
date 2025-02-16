@@ -952,6 +952,14 @@ void Memory::findImportantFunctionAddresses(){
 		return true;
 	});
 
+	//Power Treehouse Bridge
+	executeSigScan({ 0x48, 0x89, 0x74, 0x24, 0x10, 0x57, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x63, 0xB9, 0xC8, 0x00, 0x00, 0x00, 0x8B }, [this](__int64 offset, int index, const std::vector<byte>& data) {
+		this->powerTreehouseBridgeFunction = _baseAddress + offset + index - 5;
+
+		return true;
+	});
+	
+
 	//Activate Laser
 	executeSigScan({ 0x40, 0x53, 0x48, 0x83, 0xEC, 0x60, 0x83, 0xB9 }, [this](__int64 offset, int index, const std::vector<byte>& data) {
 		this->activateLaserFunction = _baseAddress + offset + index;
@@ -1529,47 +1537,6 @@ uint64_t Memory::getSoundStream(uint64_t issuedSoundPointer) {
 	ReadAbsolute(resultsPointer, &result, sizeof(uint64_t));
 
 	return result;
-}
-
-void Memory::PowerNext(int source, int target) {
-	uint64_t offset = reinterpret_cast<uintptr_t>(ComputeOffset({ GLOBALS, 0x18, source * 8, 0 }));
-	target += 1;
-
-	unsigned char buffer[] =
-		"\x48\xB8\x00\x00\x00\x00\x00\x00\x00\x00" //mov rax [address]
-		"\xB9\x00\x00\x00\x00" //mov ecx [address]
-		"\x48\xBA\x00\x00\x00\x00\x00\x00\x00\x00" //mov rdx [address]
-		"\x48\x83\xEC\x48" // sub rsp,48
-		"\xFF\xD0" //call rax
-		"\x48\x83\xC4\x48" // add rsp,48
-		"\xC3"; //ret
-
-	buffer[2] = powerNextFunction & 0xff; //address of laser activation function
-	buffer[3] = (powerNextFunction >> 8) & 0xff;
-	buffer[4] = (powerNextFunction >> 16) & 0xff;
-	buffer[5] = (powerNextFunction >> 24) & 0xff;
-	buffer[6] = (powerNextFunction >> 32) & 0xff;
-	buffer[7] = (powerNextFunction >> 40) & 0xff;
-	buffer[8] = (powerNextFunction >> 48) & 0xff;
-	buffer[9] = (powerNextFunction >> 56) & 0xff;
-	buffer[11] = target & 0xff; //address of target
-	buffer[12] = (target >> 8) & 0xff;
-	buffer[13] = (target >> 16) & 0xff;
-	buffer[14] = (target >> 24) & 0xff;
-	buffer[17] = offset & 0xff; //address of source
-	buffer[18] = (offset >> 8) & 0xff;
-	buffer[19] = (offset >> 16) & 0xff;
-	buffer[20] = (offset >> 24) & 0xff;
-	buffer[21] = (offset >> 32) & 0xff;
-	buffer[22] = (offset >> 40) & 0xff;
-	buffer[23] = (offset >> 48) & 0xff;
-	buffer[24] = (offset >> 56) & 0xff;
-
-	SIZE_T allocation_size = sizeof(buffer);
-
-	LPVOID allocation_start = VirtualAllocEx(_handle, NULL, allocation_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	WriteProcessMemory(_handle, allocation_start, buffer, allocation_size, NULL);
-	CreateRemoteThread(_handle, NULL, 0, (LPTHREAD_START_ROUTINE)allocation_start, NULL, 0, 0);
 }
 
 void Memory::PowerGauge(int id, int sourceId, int slot) {

@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <string>
+#include <set>
 
 class Memory;
 
@@ -36,5 +37,7 @@ public:
 	void SendBunkerElevatorToFloor(int floor, bool force);
 	void ToggleFloodgate(std::string name, bool connect);
 	void BridgeToggle(int associatedPanel, bool disconnect);
+	void PowerNext(int source, int target);
+	void PowerTreehouseBridge(int source);
 	void ExitSolveMode();
 };

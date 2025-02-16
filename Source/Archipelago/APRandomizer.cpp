@@ -599,7 +599,7 @@ void APRandomizer::PostGeneration() {
 	Memory* memory = Memory::get();
 
 	if (huntEntities.size()) { // Panelhunt mode -> Tutorial Gate Open is repurposed
-		Memory::get()->PowerNext(0x03629, 0x36);
+		ASMPayloadManager::get()->PowerNext(0x03629, 0x36);
 
 		if (!memory->ReadPanelData<int>(0x288E8, 0x1E4))
 		{
@@ -944,7 +944,7 @@ void APRandomizer::GenerateVariety() {
 	async = new APWatchdog(ap, panelLocker, &state, &apSettings, &fixedClientSettings);
 	SeverDoors();
 
-	Memory::get()->PowerNext(0x03629, 0x36);
+	ASMPayloadManager::get()->PowerNext(0x03629, 0x36);
 
 	if (DisableNonRandomizedPuzzles)
 		panelLocker->DisableNonRandomizedPuzzles(doorsActuallyInTheItemPool);
@@ -968,7 +968,7 @@ void APRandomizer::GenerateHard() {
 		Special::setTargetAndDeactivate(0x28998, 0x28A0D);
 	}
 
-	Memory::get()->PowerNext(0x03629, 0x36);
+	ASMPayloadManager::get()->PowerNext(0x03629, 0x36);
 
 	if (DisableNonRandomizedPuzzles)
 		panelLocker->DisableNonRandomizedPuzzles(doorsActuallyInTheItemPool);

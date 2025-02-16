@@ -82,11 +82,13 @@ private:
 #define TRACED_EDGES 0x228 
 #define TRACED_EDGE_DATA 0x230 
 #define AUDIO_PREFIX 0x270
+#define FLASH_MODE_MAX 0x27C // this is the time it takes for the panel to lose all of its traced edges. 0 means forever
 #define FLASH_MODE 0x280
 #define SOLVED 0x298
 #define POWER 0x2A0 
 #define TARGET 0x2B4 
 #define POWER_OFF_ON_FAIL 0x2B8
+#define MY_BRIDGE 0x2C0
 #define IS_CYLINDER 0x2F4
 #define CYLINDER_Z0 0x2F8
 #define CYLINDER_Z1 0x2FC

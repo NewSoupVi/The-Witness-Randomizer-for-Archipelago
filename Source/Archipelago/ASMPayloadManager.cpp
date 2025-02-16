@@ -1,6 +1,7 @@
 #include "ASMPayloadManager.h"
 
 #include "../Memory.h"
+#include "../Randomizer.h"
 
 ASMPayloadManager* ASMPayloadManager::_singleton = nullptr;
 
@@ -546,4 +547,89 @@ void ASMPayloadManager::ExecuteASM(char* asmBuff, int buffersize) {
 	memory->WriteAbsolute(reinterpret_cast<LPVOID>(payloadBlocked), "\x01", 1);
 
 	return;
+}
+
+void ASMPayloadManager::PowerTreehouseBridge(int source) {
+	Memory* memory = Memory::get();
+
+	int target = memory->ReadPanelData<int>(source, MY_BRIDGE);
+	target -= 1;
+	uint64_t target_offset = reinterpret_cast<uintptr_t>(memory->ComputeOffset({ memory->GLOBALS, 0x18, target * 8, 0 }));
+
+	source += 1;
+
+		char buffer[] =
+		"\x51" // push rcx
+		"\x51" // push rdx
+		"\x48\xB8\x00\x00\x00\x00\x00\x00\x00\x00" //mov rax [address]
+		"\xBA\x00\x00\x00\x00" //mov edx source
+		"\x48\xB9\x00\x00\x00\x00\x00\x00\x00\x00" //mov rcx [address]
+		"\xFF\xD0" //call rax
+		"\x59"  // pop rcx
+		"\x59";  // pop rcx
+
+	buffer[4] = memory->powerTreehouseBridgeFunction & 0xff; //address of laser activation function
+	buffer[5] = (memory->powerTreehouseBridgeFunction >> 8) & 0xff;
+	buffer[6] = (memory->powerTreehouseBridgeFunction >> 16) & 0xff;
+	buffer[7] = (memory->powerTreehouseBridgeFunction >> 24) & 0xff;
+	buffer[8] = (memory->powerTreehouseBridgeFunction >> 32) & 0xff;
+	buffer[9] = (memory->powerTreehouseBridgeFunction >> 40) & 0xff;
+	buffer[10] = (memory->powerTreehouseBridgeFunction >> 48) & 0xff;
+	buffer[11] = (memory->powerTreehouseBridgeFunction >> 56) & 0xff;
+	buffer[13] = source & 0xff; //address of target
+	buffer[14] = (source >> 8) & 0xff;
+	buffer[15] = (source >> 16) & 0xff;
+	buffer[16] = (source >> 24) & 0xff;
+	buffer[19] = target_offset & 0xff; //address of source
+	buffer[20] = (target_offset >> 8) & 0xff;
+	buffer[21] = (target_offset >> 16) & 0xff;
+	buffer[22] = (target_offset >> 24) & 0xff;
+	buffer[23] = (target_offset >> 32) & 0xff;
+	buffer[24] = (target_offset >> 40) & 0xff;
+	buffer[25] = (target_offset >> 48) & 0xff;
+	buffer[26] = (target_offset >> 56) & 0xff;
+
+	ExecuteASM(buffer, sizeof(buffer));
+}
+
+void ASMPayloadManager::PowerNext(int source, int target) {
+	if (target <= 0) return;
+
+	Memory* memory = Memory::get();
+
+	uint64_t offset = reinterpret_cast<uintptr_t>(memory->ComputeOffset({ memory->GLOBALS, 0x18, source * 8, 0 }));
+	target += 1;
+
+	char buffer[] =
+		"\x51" // push rcx
+		"\x51" // push rdx
+		"\x48\xB8\x00\x00\x00\x00\x00\x00\x00\x00" //mov rax [address]
+		"\xB9\x00\x00\x00\x00" //mov ecx [address]
+		"\x48\xBA\x00\x00\x00\x00\x00\x00\x00\x00" //mov rdx [address]
+		"\xFF\xD0" //call rax
+		"\x59"  // pop rcx
+		"\x59";  // pop rcx
+
+	buffer[4] = memory->powerNextFunction & 0xff; //address of laser activation function
+	buffer[5] = (memory->powerNextFunction >> 8) & 0xff;
+	buffer[6] = (memory->powerNextFunction >> 16) & 0xff;
+	buffer[7] = (memory->powerNextFunction >> 24) & 0xff;
+	buffer[8] = (memory->powerNextFunction >> 32) & 0xff;
+	buffer[9] = (memory->powerNextFunction >> 40) & 0xff;
+	buffer[10] = (memory->powerNextFunction >> 48) & 0xff;
+	buffer[11] = (memory->powerNextFunction >> 56) & 0xff;
+	buffer[13] = target & 0xff; //address of target
+	buffer[14] = (target >> 8) & 0xff;
+	buffer[15] = (target >> 16) & 0xff;
+	buffer[16] = (target >> 24) & 0xff;
+	buffer[19] = offset & 0xff; //address of source
+	buffer[20] = (offset >> 8) & 0xff;
+	buffer[21] = (offset >> 16) & 0xff;
+	buffer[22] = (offset >> 24) & 0xff;
+	buffer[23] = (offset >> 32) & 0xff;
+	buffer[24] = (offset >> 40) & 0xff;
+	buffer[25] = (offset >> 48) & 0xff;
+	buffer[26] = (offset >> 56) & 0xff;
+
+	ExecuteASM(buffer, sizeof(buffer));
 }

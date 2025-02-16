@@ -226,8 +226,6 @@ public:
 
 	uint64_t getSoundStream(uint64_t issuedSoundPointer);
 
-	void PowerNext(int source, int target);
-
 	void ActivateLaser(int id) {
 		CallVoidFunction(id, activateLaserFunction);
 	}
@@ -296,6 +294,7 @@ public:
 	int DESIREDMOVEMENTDIRECTION;
 
 	uint64_t powerNextFunction;
+	uint64_t powerTreehouseBridgeFunction;
 	uint64_t initPanelFunction;
 	uint64_t bridgeToggleFunction;
 	uint64_t openDoorFunction;

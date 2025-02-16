@@ -12,6 +12,7 @@
 
 #include <thread>
 #include "Utilities.h"
+#include "Archipelago/ASMPayloadManager.h"
 
 void Special::generateSpecialSymMaze(std::shared_ptr<Generate> gen, int id) {
 	do {
@@ -2179,6 +2180,20 @@ void Special::DrawSimplePanel(int id, std::string text, bool kickOut)
 
 	if (skip_completelyExclude.count(id)) return;
 
+	if (kickOut && !skip_noLine.contains(id)) { 
+		// Panels whose contents get replaced with "skipped" or a single line need to safely kick you out first to prevent crashes.
+		float flash_mode_max_before = memory->ReadPanelData<float>(id, FLASH_MODE_MAX);
+		memory->WritePanelData<float>(id, FLASH_MODE_MAX, {0.0000001f}); // This will make the "decay" animation only play for one game tick.
+
+		// We need to kick the player out, then wait 2 more game ticks.
+		// This is because the decay animation has to start, then stop, and only then are the traced edges removed.
+		// There may be a better way to do this. I believe Entity_Machine_Panel::reset() would immediately force the reset.
+		ASMPayloadManager::get()->ExitSolveMode();
+		ASMPayloadManager::get()->ExitSolveMode();
+		ASMPayloadManager::get()->ExitSolveMode();
+		memory->WritePanelData<float>(id, FLASH_MODE_MAX, { flash_mode_max_before });
+	}
+
 	int style = memory->ReadPanelData<int>(id, STYLE_FLAGS);
 
 	if (id != 0x01D3F) {
@@ -2306,6 +2321,8 @@ void Special::DrawSimplePanel(int id, std::string text, bool kickOut)
 		memory->WritePanelData<INT64>(id, DOT_SEQUENCE, { 0 });
 
 		memory->WritePanelData<int>(id, TRACED_EDGES, { 0 });
+
+		// Find a way to solve the panel
 	}
 
 	else
@@ -2347,15 +2364,13 @@ void Special::DrawSimplePanel(int id, std::string text, bool kickOut)
 
 	memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
 
-	if (kickOut) {
-		float panelDistance = memory->ReadPanelData<float>(id, MAX_BROADCAST_DISTANCE);
-
-		memory->WritePanelData<float>(id, MAX_BROADCAST_DISTANCE, { 0.0001f });
-
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		memory->WritePanelData<float>(id, MAX_BROADCAST_DISTANCE, { panelDistance });
-		memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
+	if (kickOut && !skip_noLine.contains(id)) { // "Solve" the panel. Idk if this is comprehensive, hopefully it works for all "simple" panels.
+		memory->WritePanelData<int>(id, SOLVED, { 1 });
+		int target = memory->ReadPanelData<int>(id, TARGET);
+		ASMPayloadManager::get()->PowerNext(id, target - 1); // Don't worry about it :)
+		if (treehousePanels.contains(id)) {
+			ASMPayloadManager::get()->PowerTreehouseBridge(id);
+		}
 	}
 
 	//Figure out a way to have the randomizer not touch a skipped panel when rerandomizing?
