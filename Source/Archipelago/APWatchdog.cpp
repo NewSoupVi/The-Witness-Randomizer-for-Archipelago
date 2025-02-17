@@ -2419,6 +2419,7 @@ void APWatchdog::UnlockEggs(std::set<int> eggs, bool local){
 	// This function is not called when an egg is picked up manually.
 	firstEggShouldSendMessage = false;
 
+	CustomSaveGameManager::get().updateValue("EasterEggs", newEggs);
 	if (local) {
 		// Send to datastorage just in case
 		int pNO = ap->get_player_number();
