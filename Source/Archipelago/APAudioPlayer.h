@@ -118,6 +118,8 @@ inline const std::vector<int> entityHuntJingles = {
 	IDR_WAVE63, // 10
 };
 
+const int finalPanelHuntJingle = IDR_WAVE92;
+
 namespace SoLoud {
 	class Soloud;
 	class Wav;
@@ -146,6 +148,7 @@ private:
 	int panelChain;
 	int epChain;
 	int lastEntityHuntIndex = -1;
+	int secondLastEntityHuntIndex = -1;
 
 	SoLoud::Wav* currentlyPlayingSyncSound;
 	int currentlyPlayingSyncHandle = -1;

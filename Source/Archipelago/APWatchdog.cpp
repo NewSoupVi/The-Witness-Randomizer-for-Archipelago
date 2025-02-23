@@ -545,6 +545,11 @@ void APWatchdog::CheckSolvedPanels() {
 
 	// Maybe play panel hunt jingle
 	if (completedHuntEntities.size()) {
+		if (state->solvedHuntEntities == state->requiredHuntEntities) {
+			PlayEntityHuntJingle(completedHuntEntities.front()); // Special behavior for last panel: Always play the entity hunt jingle
+			return;
+		}
+
 		// Don't play if we're about to play a panel completion jingle for a progression or useful item
 		for (int solvedLocation : solvedLocations) {
 			// If we don't know flags yet, don't play a jingle
@@ -2309,6 +2314,7 @@ void APWatchdog::UpdateAreaEgg(int entityID) {
 }
 
 void APWatchdog::ClearEmptyEggAreasAndSendNotification(int specificCollectedEggID) {
+	if (!firstActionDone) return;
 	if (!firstDataStoreResponse || !queuedItems.empty()) return;
 
 	std::vector<std::string> finished_areas = {};
@@ -3005,13 +3011,12 @@ void APWatchdog::PlayEntityHuntJingle(const int& huntEntity) {
 
 	if (panelIdToLocationId_READ_ONLY.count(huntEntity) && !CheckPanelHasBeenSolved(huntEntity)) return;
 
-	float percentage = (float) state->solvedHuntEntities / (float) state->requiredHuntEntities;
-
 	if (ClientWindow::get()->getJinglesSettingSafe() == "Minimal") {
 		APAudioPlayer::get()->PlayAudio(APJingle::UnderstatedEntityHunt, APJingleBehavior::Queue);
 	}
 	else {
-		APAudioPlayer::get()->PlayAudio(APJingle::EntityHunt, APJingleBehavior::Queue, percentage);
+		std::pair<int, int> solved_and_total = { state->solvedHuntEntities, state->requiredHuntEntities };
+		APAudioPlayer::get()->PlayAudio(APJingle::EntityHunt, APJingleBehavior::Queue, solved_and_total);
 	}
 }
 

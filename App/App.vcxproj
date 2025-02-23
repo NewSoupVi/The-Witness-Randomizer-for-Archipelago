@@ -199,18 +199,21 @@
     <Text Include="changes.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Media Include="..\..\..\Music\Pillars Filler Bmaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Filler EbMin.ogg" />
-    <Media Include="..\..\..\Music\Pillars Filler Emaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Progression Bmaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Progression EbMin.ogg" />
-    <Media Include="..\..\..\Music\Pillars Progression Emaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Trap Bmaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Trap EbMin.ogg" />
-    <Media Include="..\..\..\Music\Pillars Trap Emaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Useful Bmaj.ogg" />
-    <Media Include="..\..\..\Music\Pillars Useful EbMin.ogg" />
-    <Media Include="..\..\..\Music\Pillars Useful Emaj.ogg" />
+    <Media Include="..\Music\Pillars Filler Bmaj.ogg" />
+    <Media Include="..\Music\Pillars Filler EbMin.ogg" />
+    <Media Include="..\Music\Pillars Filler Emaj.ogg" />
+    <Media Include="..\Music\Pillars Progression Bmaj.ogg" />
+    <Media Include="..\Music\Pillars Progression EbMin.ogg" />
+    <Media Include="..\Music\Pillars Progression Emaj.ogg" />
+    <Media Include="..\Music\Pillars Trap Bmaj.ogg" />
+    <Media Include="..\Music\Pillars Trap EbMin.ogg" />
+    <Media Include="..\Music\Pillars Trap Emaj.ogg" />
+    <Media Include="..\Music\Pillars Useful Bmaj.ogg" />
+    <Media Include="..\Music\Pillars Useful EbMin.ogg" />
+    <Media Include="..\Music\Pillars Useful Emaj.ogg" />
+	<Media Include="..\Music\Pillars ProgUseful Bmaj.ogg" />
+    <Media Include="..\Music\Pillars ProgUseful EbMin.ogg" />
+    <Media Include="..\Music\Pillars ProgUseful Emaj.ogg" />
     <Media Include="..\Music\Bonk.ogg" />
     <Media Include="..\Music\Dog Filler.ogg" />
     <Media Include="..\Music\Dog Progression.ogg" />
@@ -256,6 +259,7 @@
     <Media Include="..\Music\Panel Hunt 9.ogg" />
     <Media Include="..\Music\Panel Hunt 10.ogg" />
     <Media Include="..\Music\Panel Hunt 11.ogg" />
+	<Media Include="..\Music\Panel Hunt Final.ogg" />
     <Media Include="..\Music\Panel Hunt Understated.ogg" />
     <Media Include="..\Music\Panel Progression 1.ogg" />
     <Media Include="..\Music\Panel Progression 2.ogg" />
@@ -279,21 +283,6 @@
     <Media Include="..\Music\Panel Useful 4.ogg" />
     <Media Include="..\Music\Panel Useful 5.ogg" />
     <Media Include="..\Music\Panel Useful Epic.ogg" />
-    <Media Include="..\Music\Pillars Filler Bmaj.ogg" />
-    <Media Include="..\Music\Pillars Filler EbMin.ogg" />
-    <Media Include="..\Music\Pillars Filler Emaj.ogg" />
-    <Media Include="..\Music\Pillars Progression Bmaj.ogg" />
-    <Media Include="..\Music\Pillars Progression EbMin.ogg" />
-    <Media Include="..\Music\Pillars Progression Emaj.ogg" />
-    <Media Include="..\Music\Pillars ProgUseful Bmaj.ogg" />
-    <Media Include="..\Music\Pillars ProgUseful EbMin.ogg" />
-    <Media Include="..\Music\Pillars ProgUseful Emaj.ogg" />
-    <Media Include="..\Music\Pillars Trap Bmaj.ogg" />
-    <Media Include="..\Music\Pillars Trap EbMin.ogg" />
-    <Media Include="..\Music\Pillars Trap Emaj.ogg" />
-    <Media Include="..\Music\Pillars Useful Bmaj.ogg" />
-    <Media Include="..\Music\Pillars Useful EbMin.ogg" />
-    <Media Include="..\Music\Pillars Useful Emaj.ogg" />
     <Media Include="..\Music\Plop 1.ogg" />
     <Media Include="..\Music\Plop 2.ogg" />
     <Media Include="..\Music\Plop 3.ogg" />
@@ -302,9 +291,6 @@
     <Media Include="..\Music\Randomized.ogg" />
     <Media Include="..\Music\Victory Understated.ogg" />
     <Media Include="..\Music\Victory.ogg" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="wave82.bin" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

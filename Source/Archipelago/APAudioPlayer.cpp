@@ -139,17 +139,54 @@ void APAudioPlayer::PlayAppropriateJingle(APJingle jingle, std::any extraFlag, b
 	auto now = std::chrono::system_clock::now();
 
 	if (jingle == APJingle::EntityHunt) {
-		float percentage = std::any_cast<float>(extraFlag);
+		std::pair<int, int> solved_and_total = std::any_cast<std::pair<int, int>>(extraFlag);
+		int solved = solved_and_total.first;
+		int required = solved_and_total.second;
+		float percentage = (float)solved / (float)required;
 		double bestIndex = percentage * (entityHuntJingles.size() - 1);
 		if (bestIndex > entityHuntJingles.size() - 1) bestIndex = entityHuntJingles.size() - 1;
 
 		std::normal_distribution d{ bestIndex, 1.5};
+		std::uniform_int_distribution d2(1, 2);
 
 		int index = -1;
-		while (index < 0 || index >= entityHuntJingles.size() || index == lastEntityHuntIndex) {
+		while (true) {
+			if (solved == 1) {
+				index = 0; // Always play the first jingle first
+				break;
+			}
+			if (required > 12) {
+				if (solved == required - 2) {
+					// Make the third to last jingle not be the most epic one
+					if (index == entityHuntJingles.size() - 1) continue;
+					// Make the third to last jingle not be underwhelming
+					if (index < entityHuntJingles.size() - 5) continue;
+				}
+			}
+			if (solved == required - 1) {
+				// Force the second to last jingle to be the most epic one
+				index = entityHuntJingles.size() - 1;
+				break;
+			}
+			if (solved == required) {
+				// Special last jingle
+				PlayJingle(finalPanelHuntJingle, async);
+				return;
+			}
+
 			index = std::round(d(rng));
+			if (index < 0) continue;
+			if (index >= entityHuntJingles.size()) continue;
+			if (index == lastEntityHuntIndex) continue;
+			if (index == secondLastEntityHuntIndex) {
+				if (d2(rng) == 1) continue; // Make the second last a bit less likely to prevent back and forth
+			}
+			break;
 		}
+
+		secondLastEntityHuntIndex = lastEntityHuntIndex;
 		lastEntityHuntIndex = index;
+		
 		PlayJingle(entityHuntJingles[index], async);
 		return;
 	}
