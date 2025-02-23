@@ -421,14 +421,9 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 	});
 
-	ap->set_retrieved_handler([&](const std::map <std::string, nlohmann::json> response) {
-		for (auto [key, value] : response) {
-			if(key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value);
-			if(key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value);
-		}
-	});
-
 	ap->set_set_reply_handler([&](const std::string key, const nlohmann::json value, nlohmann::json original_value) {
+		async->firstDataStoreResponse = true;
+
 		if (key.find("WitnessDeathLink") != std::string::npos) {
 			async->SetValueFromServer(key, value);
 			return;
@@ -439,10 +434,10 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			return;
 		}
 
-		if (key.find("WitnessLaserHint") != std::string::npos) async->HandleLaserHintResponse(key, value); // Do not flip
-		else if (key.find("WitnessLaser") != std::string::npos) async->HandleLaserResponse(key, value); // Do not flip
-		else if (key.find("WitnessEP") != std::string::npos) async->HandleEPResponse(key, value);
-		else if (key.find("WitnessAudioLog") != std::string::npos) async->HandleAudioLogResponse(key, value);
+		if (key.find("WitnessSeenLaserHints") != std::string::npos) async->HandleLaserHintResponse(key, value);
+		else if (key.find("WitnessActivatedLasers") != std::string::npos) async->HandleLaserResponse(key, value);
+		else if (key.find("WitnessSolvedEPs") != std::string::npos) async->HandleEPResponse(key, value);
+		else if (key.find("WitnessActivatedAudioLogs") != std::string::npos) async->HandleAudioLogResponse(key, value);
 		else if (key.find("WitnessSolvedPanels") != std::string::npos) async->HandleSolvedPanelsResponse(value);
 		else if (key.find("WitnessHuntEntityStatus") != std::string::npos) async->HandleHuntEntityResponse(value);
 		else if (key.find("WitnessEasterEggStatus") != std::string::npos) async->HandleEasterEggResponse(key, value);
@@ -575,23 +570,6 @@ void APRandomizer::PreGeneration() {
 		hint.message = GetCreditsHint();
 	}
 }
-
-void APRandomizer::GetOrCreateSaveGame()
-{
-	Memory* memory = Memory::get();
-
-	GUID defaultPanelValue = { 0x3f333333, 0x9999, 0x3f19, {'\x99', '\x99', '\x19', '\x3e', '\x00', '\x00', '\x80', '\x3f'}};
-
-	GUID reportedGUID = memory->ReadPanelData<GUID>(0x00182, VIDEO_STATUS_COLOR);
-	if (reportedGUID != defaultPanelValue) {
-		savegameGUID = reportedGUID;
-		return;
-	}
-
-	CoCreateGuid(&savegameGUID);
-	memory->WritePanelData<GUID>(0x00182, VIDEO_STATUS_COLOR, { savegameGUID });
-}
-
 
 
 void APRandomizer::PostGeneration() {
