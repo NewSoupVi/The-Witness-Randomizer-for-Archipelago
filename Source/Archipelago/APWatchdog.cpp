@@ -2354,7 +2354,7 @@ void APWatchdog::ClearEmptyEggAreasAndSendNotification(int specificCollectedEggI
 		unsolvedEasterEggsPerArea.erase(finished_area);
 	}
 
-	if (EggHuntDifficulty != 5) {
+	if (EggHuntDifficulty != 5 && EggHuntDifficulty > 0) {
 		std::string message = "There are no more Easter Eggs in the " + finished_areas[0] + " area.";
 		if (just_found) {
 			message = "You've found every Easter Egg in the " + finished_areas[0] + " area.";
