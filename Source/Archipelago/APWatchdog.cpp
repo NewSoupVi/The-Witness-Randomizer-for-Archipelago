@@ -546,6 +546,9 @@ void APWatchdog::CheckSolvedPanels() {
 	// Maybe play panel hunt jingle
 	if (completedHuntEntities.size()) {
 		if (state->solvedHuntEntities == state->requiredHuntEntities) {
+			if (ClientWindow::get()->getSetting(ClientToggleSetting::ExtraInfo)) {
+				HudManager::get()->queueNotification("Return to the beginning...\nIt's time to face reality once again.");
+			}
 			PlayEntityHuntJingle(completedHuntEntities.front()); // Special behavior for last panel: Always play the entity hunt jingle
 			return;
 		}
