@@ -109,6 +109,7 @@ public:
 	void HandleLaserHintResponse(std::string laserIDstr, nlohmann::json value);
 	void HandleSolvedPanelsResponse(nlohmann::json value);
 	void HandleEasterEggResponse(std::string key, nlohmann::json value);
+	void UnlockEggs(std::set<int> eggs, bool local);
 	void HandleHuntEntityResponse(nlohmann::json value);
 	void HandleOpenedDoorsResponse(nlohmann::json value);
 	void setLocationItemFlag(int64_t location, unsigned int flags);
@@ -123,6 +124,7 @@ public:
 	void ProcessDeathLink(double time, std::string cause, std::string source);
 
 	bool newItemsJustIn = false;
+	bool firstDataStoreResponse = false;
 
 	void QueueReceivedItem(std::vector<__int64> item);
 
@@ -193,8 +195,7 @@ private:
 	std::map<int, bool> easterEggToSolveStatus;
 	std::map<std::string, std::set<int>> unsolvedEasterEggsPerArea;
 	std::map<int, std::string> easterEggToAreaName;
-	bool firstEggResponse = false;
-	bool firstEggShouldSendMessage = false;
+	bool firstEggShouldSendMessage = true;
 	int EggHuntStep = 0;
 	int EggHuntDifficulty = 0;
 	int HighestRealEggCheck = 0; // Not excluded
@@ -213,8 +214,6 @@ private:
 	std::chrono::system_clock::time_point powerSurgeStartTime;
 
 	std::set<double> deathLinkTimestamps;
-
-	bool laserRequirementMet = false;
 
 	std::set<int> disableCollisionList;
 
@@ -263,6 +262,7 @@ private:
 
 	void HandleInGameHints(float deltaSeconds);
 
+	void CheckObeliskSides();
 	void CheckSolvedPanels();
 	void HandleMovementSpeed(float deltaSeconds);
 	void HandlePowerSurge();
@@ -304,6 +304,8 @@ private:
 	// Returns the number of skips currently available to the player.
 	int GetAvailablePuzzleSkips() const;
 
+	void CheckLaserHints();
+	void CheckAudioLogHints();
 	void CheckLasers();
 	void CheckEPs();
 	void CheckPanels();
@@ -331,7 +333,7 @@ private:
 
 	void CheckUnlockedWarps();
 
-	void UnlockWarps(std::vector<std::string> warps);
+	void UnlockWarps(std::vector<std::string> warps, bool local);
 
 	std::string startingWarp = "Tutorial First Hallway";
 	std::map<std::string, bool> unlockableWarps = {};
@@ -358,16 +360,16 @@ private:
 
 	std::map<std::string, int> laserIDsToLasers;
 	std::list<std::string> laserIDs;
-	std::map<int, bool> laserStates;
 	std::map<int, std::string> laserMessages;
 
 	std::set<int> solvedPanels;
+	std::set<int> solvedEPs;
+	std::set<int> activatedLasers;
 	std::set<int> openedDoors;
 	std::set<int> solvedHuntEntitiesDataStorage;
 	std::set<int> solvedEasterEggsDataStorage;
 	std::map<std::string, bool> lastDeadChecks;
 
-	std::map<std::string, int> EPIDsToEPs;
 	std::list<std::string> EPIDs;
 	std::map<int, bool> EPStates;
 

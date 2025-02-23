@@ -24,6 +24,7 @@
 #include "ASMPayloadManager.h"
 #include "../Utilities.h"
 #include "LockablePuzzle.h"
+#include "CustomSaveGameManager.h"
 
 
 #define CHEAT_KEYS_ENABLED 0
@@ -60,7 +61,7 @@ APWatchdog::APWatchdog(APClient* client, PanelLocker* panelLocker, APState* stat
 	itemIdToDoorSet = apSettings->itemIdToDoorSet;
 	SyncProgress = fixedClientSettings->SyncProgress;
 	EggHuntStep = apSettings->EggHuntStep;
-	EggHuntDifficulty = apSettings->EggHuntDifficulty; // TODO: UNDO DEBUG MODE
+	EggHuntDifficulty = apSettings->EggHuntDifficulty;
 	
 	for (int huntEntity : apSettings->huntEntites) {
 		huntEntityToSolveStatus[huntEntity] = false;
@@ -223,6 +224,7 @@ void APWatchdog::action() {
 
 		CheckFinalRoom();
 
+		CheckObeliskSides();
 		CheckSolvedPanels();
 		ClearEmptyEggAreasAndSendNotification();
 
@@ -235,21 +237,15 @@ void APWatchdog::action() {
 
 		panelLocker->UpdatePPEPPuzzleLocks(*state);
 
-		if (storageCheckCounter <= 0) {
-			CheckLasers();
-			CheckEPs();
-			CheckPanels();
-			CheckDoors();
-			CheckHuntEntities();
+		CheckLaserHints();
+		CheckAudioLogHints();
+		CheckLasers();
+		CheckEPs();
+		CheckPanels();
+		CheckDoors();
+		CheckHuntEntities();
 
-			firstStorageCheckDone = true;
-
-			storageCheckCounter = 20;
-		}
-		else
-		{
-			storageCheckCounter--;
-		}
+		firstStorageCheckDone = true;
 	}
 
 	CheckImportantCollisionCubes();
@@ -374,6 +370,47 @@ std::vector<int> APWatchdog::CheckCompletedHuntEntities() {
 	return completedHuntEntities;
 }
 
+void APWatchdog::CheckObeliskSides()
+{
+	for (auto& [obeliskID, EPSet] : obeliskHexToEPHexes) {
+		if (!panelIdToLocationId.contains(obeliskID)) continue;
+		int locationID = panelIdToLocationId[obeliskID];
+
+		bool anyNew = false;
+
+		for (auto it2 = EPSet.begin(); it2 != EPSet.end();) {
+			if (ReadPanelData<int>(*it2, EP_SOLVED))
+			{
+				anyNew = true;
+				it2 = EPSet.erase(it2);
+			}
+			else
+			{
+				it2++;
+			}
+		}
+
+		if (EPSet.empty())
+		{
+			if (FirstEverLocationCheckDone) HudManager::get()->queueBannerMessage(ap->get_location_name(locationID, "The Witness") + " Completed!");
+		}
+		else
+		{
+			if (anyNew) {
+				int total = obeliskHexToAmountOfEPs[obeliskID];
+				int done = total - EPSet.size();
+
+				if (FirstEverLocationCheckDone) {
+					std::string message = ap->get_location_name(locationID, "The Witness");
+					message += " Progress (" + std::to_string(done) + "/" + std::to_string(total) + ")";
+					HudManager::get()->queueBannerMessage(message);
+				}
+			}
+		}
+		continue;
+	}
+}
+
 void APWatchdog::CheckSolvedPanels() {
 	std::vector<int> toRemove = {};
 	for (int id : recolorWhenSolved) {
@@ -466,42 +503,9 @@ void APWatchdog::CheckSolvedPanels() {
 	{
 		if (obeliskHexToEPHexes.count(entityID)) {
 			std::set<int> EPSet = obeliskHexToEPHexes[entityID];
-
-			bool anyNew = false;
-
-			for (auto it2 = EPSet.begin(); it2 != EPSet.end();) {
-				if (ReadPanelData<int>(*it2, EP_SOLVED))
-				{
-					anyNew = true;
-					ap->Set("WitnessEP" + std::to_string(ap->get_player_number()) + "-" + std::to_string(*it2), NULL, false, { {"replace", true} });
-
-					it2 = EPSet.erase(it2);
-				}
-				else
-				{
-					it2++;
-				}
-			}
-
-			obeliskHexToEPHexes[entityID] = EPSet;
-
 			if (EPSet.empty())
 			{
-				if(FirstEverLocationCheckDone) HudManager::get()->queueBannerMessage(ap->get_location_name(locationID, "The Witness") + " Completed!");
 				solvedEntityIDs.push_back(entityID);
-			}
-			else
-			{
-				if (anyNew) {
-					int total = obeliskHexToAmountOfEPs[entityID];
-					int done = total - EPSet.size();
-
-					if (FirstEverLocationCheckDone) {
-						std::string message = ap->get_location_name(locationID, "The Witness");
-						message += " Progress (" + std::to_string(done) + "/" + std::to_string(total) + ")";
-						HudManager::get()->queueBannerMessage(message);
-					}
-				}
 			}
 			continue;
 		}
@@ -541,6 +545,14 @@ void APWatchdog::CheckSolvedPanels() {
 
 	// Maybe play panel hunt jingle
 	if (completedHuntEntities.size()) {
+		if (state->solvedHuntEntities == state->requiredHuntEntities) {
+			if (ClientWindow::get()->getSetting(ClientToggleSetting::ExtraInfo)) {
+				HudManager::get()->queueNotification("Return to the beginning...\nIt's time to face reality once again.");
+			}
+			PlayEntityHuntJingle(completedHuntEntities.front()); // Special behavior for last panel: Always play the entity hunt jingle
+			return;
+		}
+
 		// Don't play if we're about to play a panel completion jingle for a progression or useful item
 		for (int solvedLocation : solvedLocations) {
 			// If we don't know flags yet, don't play a jingle
@@ -1749,21 +1761,17 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 		}
 	}
 
+	if (allLasers.contains(currentLaser)) {
+		bool laserHasBeenSeen = ReadPanelData<float>(currentLaser, 0x108) > 1;
+		if (!laserHasBeenSeen) WritePanelData<float>(currentLaser, 0x108, { 1.0001f });
+	}
 
 	for (int laserID : allLasers) {
 		if (inGameHints.count(laserID)) {
 			bool laserHasBeenSeen = ReadPanelData<float>(laserID, 0x108) > 1;
-			bool laserIsCurrentlyNearby = currentLaser == laserID;
 			
-			if (laserHasBeenSeen || laserIsCurrentlyNearby) {
+			if (laserHasBeenSeen) {
 				seenMessages.insert(inGameHints[laserID]);
-				if (!seenLasers.count(laserID)) {
-					WritePanelData<float>(laserID, 0x108, { 1.0001f });
-					int64_t locationId = inGameHints[laserID].locationID;
-					if (locationId != -1 && inGameHints[laserID].playerNo == pNO && inGameHints[laserID].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({locationId}, 2);
-					ap->Set("WitnessLaserHint" + std::to_string(pNO) + "-" + std::to_string(laserID), NULL, false, { {"replace", true} });
-					seenLasers.insert(laserID);
-				}
 			}
 		}
 	}
@@ -1775,12 +1783,6 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 
 		if (audioLogHasBeenPlayed || logPlaying) {
 			seenMessages.insert(inGameHints[logId]);
-			if (!seenAudioLogs.count(logId)) {
-				int64_t locationId = inGameHints[logId].locationID;
-				if (locationId != -1 && inGameHints[logId].playerNo == pNO && inGameHints[logId].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({ locationId }, 2);
-				ap->Set("WitnessAudioLog" + std::to_string(pNO) + "-" + std::to_string(logId), NULL, false, { {"replace", true} });
-				seenAudioLogs.insert(logId);
-			}
 		}
 		if (logPlaying) {
 			currentAudioLog = logId;
@@ -2005,115 +2007,154 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 	ClientWindow::get()->displaySeenAudioHints(seenMessagesStrings, fullyClearedAreas, deadChecks, otherPeoplesDeadChecks);
 }
 
-void APWatchdog::CheckEPs() {
+void APWatchdog::CheckAudioLogHints() {
+	int pNO = ap->get_player_number();
+
+	std::list<APClient::DataStorageOperation> ops = {};
+
 	if (!firstStorageCheckDone) {
-		int pNO = ap->get_player_number();
-
-		for (int ep : allEPs) {
-			std::string epID = "WitnessEP" + std::to_string(pNO) + "-" + std::to_string(ep);
-
-			EPIDsToEPs[epID] = ep;
-			EPStates[ep] = false;
-			EPIDs.push_back(epID);
-
-			APClient::DataStorageOperation operation;
-			operation.operation = "default";
-			operation.value = false;
-
-			std::list<APClient::DataStorageOperation> operations;
-
-			operations.push_back(operation);
-
-
-			nlohmann::json a;
-
-			ap->Set(epID, a, false, operations);
-
-			EPIDs.push_back(epID);
-		}
-
-		ap->SetNotify(EPIDs);
-		ap->Get(EPIDs);
+		ap->SetNotify({ "WitnessActivatedAudioLogs" + std::to_string(pNO) });
+		ops.push_back({ "default", nlohmann::json::object() });
 	}
 
-	for (auto [epID, ep] : EPIDsToEPs) {
-		if (ReadPanelData<int>(ep, EP_SOLVED)) {
-			if (!EPStates[ep]) {
-				EPStates[ep] = true;
+	std::map<std::string, bool> newlyActivatedAudioLogs = {};
 
-				APClient::DataStorageOperation operation;
-				operation.operation = "replace";
-				operation.value = true;
+	for (int audioLog : audioLogs) {
+		if (seenAudioLogs.count(audioLog)) continue;
 
-				std::list<APClient::DataStorageOperation> operations;
-				operations.push_back(operation);
-
-				ap->Set(epID, NULL, false, operations);
+		bool audioLogHasBeenPlayed = ReadPanelData<int>(audioLog, AUDIO_LOG_PLAYED);
+		bool logPlaying = ReadPanelData<int>(audioLog, AUDIO_LOG_IS_PLAYING) != 0;
+		if (audioLogHasBeenPlayed || logPlaying) {
+			if (inGameHints.contains(audioLog)) {
+				int64_t locationId = inGameHints[audioLog].locationID;
+				if (locationId != -1 && inGameHints[audioLog].playerNo == pNO && inGameHints[audioLog].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({ locationId }, 2);
 			}
+
+			std::string log_str = Utilities::entityStringRepresentation(audioLog);
+
+			newlyActivatedAudioLogs[log_str] = true;
+			seenAudioLogs.insert(audioLog);
 		}
+	}
+
+	if (newlyActivatedAudioLogs.size()) {
+		ops.push_back({ "update" , newlyActivatedAudioLogs });
+	}
+
+	if (!ops.empty()) {
+		ap->Set("WitnessActivatedAudioLogs" + std::to_string(pNO), nlohmann::json::object(), false, ops);
+	}
+}
+
+void APWatchdog::CheckLaserHints() {
+	int pNO = ap->get_player_number();
+
+	std::list<APClient::DataStorageOperation> ops = {};
+
+	if (!firstStorageCheckDone) {
+		ap->SetNotify({ "WitnessSeenLaserHints" + std::to_string(pNO) });
+		ops.push_back({ "default", nlohmann::json::object() });
+	}
+
+	std::map<std::string, bool> newlySeenLasers = {};
+
+	for (int laserID : allLasers) {
+		if (seenAudioLogs.count(laserID)) continue;
+
+		bool laserHasBeenSeen = ReadPanelData<float>(laserID, 0x108) > 1;
+		if (laserHasBeenSeen) {
+			if (inGameHints.contains(laserID)) {
+				int64_t locationId = inGameHints[laserID].locationID;
+				if (locationId != -1 && inGameHints[laserID].playerNo == pNO && inGameHints[laserID].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({ locationId }, 2);
+			}
+
+			std::string log_str = Utilities::entityStringRepresentation(laserID);
+
+			newlySeenLasers[log_str] = true;
+			seenLasers.insert(laserID);
+		}
+	}
+
+	if (newlySeenLasers.size()) {
+		ops.push_back({ "update" , newlySeenLasers });
+	}
+
+	if (!ops.empty()) {
+		ap->Set("WitnessSeenLaserHints" + std::to_string(pNO), nlohmann::json::object(), false, ops);
+	}
+}
+
+void APWatchdog::CheckEPs() {
+	int pNO = ap->get_player_number();
+
+	std::list<APClient::DataStorageOperation> ops = {};
+
+	if (!firstStorageCheckDone) {
+		ap->SetNotify({ "WitnessSolvedEPs" + std::to_string(pNO) });
+		ops.push_back({ "default", nlohmann::json::object() });
+	}
+
+	std::map<std::string, bool> newlySolvedEPs = {};
+
+	for (int EP : allEPs) {
+		if (solvedEPs.count(EP)) continue;
+
+		if (ReadPanelData<int>(EP, EP_SOLVED)) {
+			std::string EP_str = Utilities::entityStringRepresentation(EP);
+
+			newlySolvedEPs[EP_str] = true;
+			solvedEPs.insert(EP);
+		}
+	}
+
+	if (newlySolvedEPs.size()) {
+		ops.push_back({ "update" , newlySolvedEPs });
+	}
+
+	if (!ops.empty()) {
+		ap->Set("WitnessSolvedEPs" + std::to_string(pNO), nlohmann::json::object(), false, ops);
 	}
 }
 
 void APWatchdog::CheckLasers() {
+	int pNO = ap->get_player_number();
+
+	std::list<APClient::DataStorageOperation> ops = {};
+
 	if (!firstStorageCheckDone) {
-		int pNO = ap->get_player_number();
-
-		for (int laser : allLasers) {
-			std::string laserID = "WitnessLaser" + std::to_string(pNO) + "-" + std::to_string(laser);
-
-			laserIDsToLasers[laserID] = laser;
-			laserStates[laser] = false;
-			laserIDs.push_back(laserID);
-
-			APClient::DataStorageOperation operation;
-			operation.operation = "default";
-			operation.value = false;
-
-			std::list<APClient::DataStorageOperation> operations;
-
-			operations.push_back(operation);
-
-
-			nlohmann::json a;
-
-			ap->Set(laserID, a, false, operations);
-
-			laserIDs.push_back(laserID);
-		}
-
-		ap->SetNotify(laserIDs);
-		ap->Get(laserIDs);
+		ap->SetNotify({ "WitnessActivatedLasers" + std::to_string(pNO) });
+		ops.push_back({ "default", nlohmann::json::object() });
 	}
 
+	std::map<std::string, bool> newlyActivatedLasers = {};
+
 	int laserCount = 0;
-	
-	for (auto [laserID, laser] : laserIDsToLasers) {
+
+	for (int laser : allLasers) {
 		if (ReadPanelData<int>(laser, LASER_TARGET)) {
-			laserCount += 1;
+			laserCount++;
 
-			if (!laserStates[laser]) {
-				laserStates[laser] = true;
+			if (activatedLasers.count(laser)) continue;
 
-				APClient::DataStorageOperation operation;
-				operation.operation = "replace";
-				operation.value = true;
+			std::string Laser_str = Utilities::entityStringRepresentation(laser);
 
-				std::list<APClient::DataStorageOperation> operations;
-				operations.push_back(operation);
-
-				ap->Set(laserID, NULL, false, operations);
-			}
+			newlyActivatedLasers[Laser_str] = true;
+			activatedLasers.insert(laser);
 		}
+	}
+
+	if (newlyActivatedLasers.size()) {
+		ops.push_back({ "update" , newlyActivatedLasers });
+	}
+
+	if (!ops.empty()) {
+		ap->Set("WitnessActivatedLasers" + std::to_string(pNO), nlohmann::json::object(), false, ops);
 	}
 
 	if (laserCount != state->activeLasers) {
 		state->activeLasers = laserCount;
 		panelLocker->UpdatePuzzleLock(*state, 0x0A332);
 		panelLocker->UpdatePuzzleLock(*state, 0x3D9A9);
-
-		if (laserCount >= state->requiredChallengeLasers && !laserRequirementMet) {
-			laserRequirementMet = true;
-		}
 	}
 }
 
@@ -2172,7 +2213,7 @@ void APWatchdog::CheckHuntEntities() {
 void APWatchdog::CheckDoors() {
 	int pNO = ap->get_player_number();
 
-	if (openedDoors.empty()) {
+	if (!firstStorageCheckDone) {
 		ap->SetNotify({ "WitnessOpenedDoors" + std::to_string(pNO) });
 		ap->Set("WitnessOpenedDoors" + std::to_string(pNO), nlohmann::json::object(), true, { { "default", nlohmann::json::object() } });
 	}
@@ -2232,18 +2273,20 @@ void APWatchdog::SetValueFromServer(std::string key, nlohmann::json value) {
 }
 
 void APWatchdog::HandleLaserResponse(std::string laserID, nlohmann::json value) {
-	int laserNo = laserIDsToLasers[laserID];
+	std::map<std::string, bool> lasersActivatedAccordingToDataStorage = value;
 
-	bool laserActiveAccordingToDataStore = value == true;
+	for (auto [entityString, dataStorageSolveStatus] : lasersActivatedAccordingToDataStorage) {
+		if (!dataStorageSolveStatus) continue;
 
-	bool laserActiveInGame = ReadPanelData<int>(laserNo, LASER_TARGET) != 0;
+		int entityID = std::stoul(entityString, nullptr, 16);
 
-	if (laserActiveInGame == laserActiveAccordingToDataStore) return;
+		bool laserActiveInGame = ReadPanelData<int>(entityID, LASER_TARGET) != 0;
 
-	if(!laserActiveInGame && SyncProgress)
-	{
-		Memory::get()->ActivateLaser(laserNo);
-		HudManager::get()->queueNotification(laserNames[laserNo] + " Laser Activated Remotely (Coop)", getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT));
+		if (!laserActiveInGame && (SyncProgress))
+		{
+			Memory::get()->ActivateLaser(entityID);
+			HudManager::get()->queueNotification(laserNames[entityID] + " Laser Activated Remotely (Coop)", getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT));
+		}
 	}
 }
 
@@ -2258,7 +2301,7 @@ void APWatchdog::HandleWarpResponse(nlohmann::json value) {
 	if (unlockableWarps.contains(startingWarp)) {
 		localUnlockedWarps.push_back(startingWarp);
 	}
-	UnlockWarps(localUnlockedWarps);
+	UnlockWarps(localUnlockedWarps, false);
 }
 
 void APWatchdog::UpdateAreaEgg(int entityID) {
@@ -2274,7 +2317,8 @@ void APWatchdog::UpdateAreaEgg(int entityID) {
 }
 
 void APWatchdog::ClearEmptyEggAreasAndSendNotification(int specificCollectedEggID) {
-	if (!firstEggResponse || !queuedItems.empty()) return;
+	if (!firstActionDone) return;
+	if (!firstDataStoreResponse || !queuedItems.empty()) return;
 
 	std::vector<std::string> finished_areas = {};
 
@@ -2350,25 +2394,23 @@ void APWatchdog::HandleEasterEggResponse(std::string key, nlohmann::json value) 
 
 		solvedEasterEggsDataStorage.insert(entityID);
 
-		if (easterEggToSolveStatus[entityID]) continue;
-
-		easterEggToSolveStatus[entityID] = true;
-		UpdateAreaEgg(entityID);
-		
 		newRemoteEggs.insert(entityID);
 	}
+	UnlockEggs(newRemoteEggs, false);
+}
 
-	if (!firstEggResponse) {
-		if (SyncProgress) {
-			ap->SetNotify({ "WitnessEasterEggStatus" + std::to_string(pNO) });
-		}
-		ap->Set("WitnessEasterEggStatus" + std::to_string(pNO), nlohmann::json::object(), true, { { "default", nlohmann::json::object() } });
-		firstEggShouldSendMessage = newRemoteEggs.empty();
+void APWatchdog::UnlockEggs(std::set<int> eggs, bool local){
+	std::set<int> newEggs;
+
+	for (int egg : eggs) {
+		if (easterEggToSolveStatus[egg]) continue;
+		easterEggToSolveStatus[egg] = true;
+		newEggs.insert(egg);
+		UpdateAreaEgg(egg);
 	}
-	firstEggResponse = true;
 
-	if (newRemoteEggs.empty()) {
-		// "Silently" clear empty areas if no eggs have ever been found, then exit
+	if (local) {
+		// "Silently" clear empty areas if this is the save load
 		std::vector<std::string> empty_areas = {};
 		for (auto [area_name, eggs] : unsolvedEasterEggsPerArea) {
 			if (eggs.empty()) {
@@ -2379,7 +2421,23 @@ void APWatchdog::HandleEasterEggResponse(std::string key, nlohmann::json value) 
 		for (std::string finished_area : empty_areas) {
 			unsolvedEasterEggsPerArea.erase(finished_area);
 		}
-		return;
+	}
+
+	if (newEggs.empty()) return;
+
+	// This function is not called when an egg is picked up manually.
+	firstEggShouldSendMessage = false;
+
+	CustomSaveGameManager::get().updateValue("EasterEggs", newEggs);
+	if (local) {
+		// Send to datastorage just in case
+		int pNO = ap->get_player_number();
+		std::map<std::string, bool> newEggsDataStore = {};
+		for (int egg : newEggs) {
+			std::string lookingAtEggString = Utilities::entityStringRepresentation(egg);
+			newEggsDataStore[lookingAtEggString] = true;
+			ap->Set("WitnessEasterEggStatus" + std::to_string(pNO), nlohmann::json::object(), false, { { "update" , newEggsDataStore } });
+		}
 	}
 
 	int eggTotal = 0;
@@ -2390,21 +2448,20 @@ void APWatchdog::HandleEasterEggResponse(std::string key, nlohmann::json value) 
 		if (status) eggTotal++;
 	}
 
-	bool coop = key == "WitnessEasterEggStatus" + std::to_string(pNO);
-
 	std::string message = "Easter Eggs were ";
-	if (newRemoteEggs.size() == 1) {
+	if (newEggs.size() == 1) {
 		message = "An Easter Egg was ";
 	}
-	if (coop) {
+	if (!local) {
 		message += "collected remotely (Coop). New total: ";
 	}
 	else {
-		message += "reported as previously collected. Current total: ";
+		message += "previously collected. Current total: ";
 	}
 	message += std::to_string(eggTotal) + "/" + std::to_string(easterEggToSolveStatus.size() - 1);
 
 	HudManager::get()->queueNotification(message, getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT));
+
 	ClearEmptyEggAreasAndSendNotification();
 }
 
@@ -2459,49 +2516,72 @@ void APWatchdog::HandleHuntEntityResponse(nlohmann::json value) {
 }
 
 void APWatchdog::HandleEPResponse(std::string epID, nlohmann::json value) {
-	int epNo = EPIDsToEPs[epID];
+	std::map<std::string, bool> epsSolvedAccordingToDataStorage = value;
 
-	bool epActiveAccordingToDataPackage = value == true;
+	std::vector<int> newlySolvedEPs;
 
-	bool epActiveInGame = ReadPanelData<int>(epNo, EP_SOLVED) != 0;
+	for (auto [entityString, dataStorageSolveStatus] : epsSolvedAccordingToDataStorage) {
+		if (!dataStorageSolveStatus) continue;
 
-	if (epActiveInGame == epActiveAccordingToDataPackage) return;
+		int entityID = std::stoul(entityString, nullptr, 16);
 
-	if (!epActiveInGame && (SyncProgress))
-	{
-		Memory::get()->SolveEP(epNo);
-		if (precompletableEpToName.count(epNo) && precompletableEpToPatternPointBytes.count(epNo) && EPShuffle) {
-			Memory::get()->MakeEPGlow(precompletableEpToName.at(epNo), precompletableEpToPatternPointBytes.at(epNo));
+		bool epActiveInGame = ReadPanelData<int>(entityID, EP_SOLVED) != 0;
+
+		if (!epActiveInGame && (SyncProgress))
+		{
+			Memory::get()->SolveEP(entityID);
+			if (precompletableEpToName.count(entityID) && precompletableEpToPatternPointBytes.count(entityID) && EPShuffle) {
+				Memory::get()->MakeEPGlow(precompletableEpToName.at(entityID), precompletableEpToPatternPointBytes.at(entityID));
+			}
+			newlySolvedEPs.push_back(entityID);
 		}
-		if (SyncProgress){
-			HudManager::get()->queueNotification("EP Activated Remotely (Coop)", getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT)); //TODO: Names
+	}
+
+	if (newlySolvedEPs.size() == 0) return;
+	if (newlySolvedEPs.size() <= 3) {
+		for (int ep : newlySolvedEPs) {
+			HudManager::get()->queueNotification(entityToName[ep] + " Activated Remotely (Coop)", getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT)); //TODO: Names
 		}
+	}
+	else {
+		HudManager::get()->queueNotification(std::to_string(newlySolvedEPs.size()) + " EPs Activated Remotely (Coop)", getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT)); //TODO: Names
 	}
 }
 
 void APWatchdog::HandleAudioLogResponse(std::string logIDstr, nlohmann::json value) {
-	bool audioLogSeen = value == true;
-	int logID = stoi(logIDstr.substr(logIDstr.find("-") + 1));
+	std::map<std::string, bool> audiologsSeenAccordingToDataStorage = value;
 
-	if (!audioLogSeen) return;
+	for (auto [entityString, dataStorageSolveStatus] : audiologsSeenAccordingToDataStorage) {
+		if (!dataStorageSolveStatus) continue;
 
-	if (SyncProgress)
-	{
-		WritePanelData<int>(logID, AUDIO_LOG_PLAYED, { 1 });
-		seenAudioLogs.insert(logID);
+		int entityID = std::stoul(entityString, nullptr, 16);
+
+		bool audioLogHasBeenPlayed = ReadPanelData<int>(entityID, AUDIO_LOG_PLAYED);
+		bool logPlaying = ReadPanelData<int>(entityID, AUDIO_LOG_IS_PLAYING) != 0;
+
+		if (!(audioLogHasBeenPlayed || logPlaying) && (SyncProgress))
+		{
+			WritePanelData<int>(entityID, AUDIO_LOG_PLAYED, { 1 });
+			seenAudioLogs.insert(entityID);
+		}
 	}
 }
 
 void APWatchdog::HandleLaserHintResponse(std::string laserIDstr, nlohmann::json value) {
-	bool laserHintSeen = value == true;
-	int laserID = stoi(laserIDstr.substr(laserIDstr.find("-") + 1));
+	std::map<std::string, bool> laserHintsSeenAccordingToDataStorage = value;
 
-	if (!laserHintSeen) return;
+	for (auto [entityString, dataStorageSolveStatus] : laserHintsSeenAccordingToDataStorage) {
+		if (!dataStorageSolveStatus) continue;
 
-	if (SyncProgress)
-	{
-		WritePanelData<float>(laserID, 0x108, { 1.0001 });
-		seenLasers.insert(laserID);
+		int entityID = std::stoul(entityString, nullptr, 16);
+
+		bool laserHasBeenSeen = ReadPanelData<float>(entityID, 0x108) > 1;
+
+		if (!laserHasBeenSeen && (SyncProgress))
+		{
+			WritePanelData<float>(entityID, 0x108, { 1.0001 });
+			seenLasers.insert(entityID);
+		}
 	}
 }
 
@@ -2934,13 +3014,12 @@ void APWatchdog::PlayEntityHuntJingle(const int& huntEntity) {
 
 	if (panelIdToLocationId_READ_ONLY.count(huntEntity) && !CheckPanelHasBeenSolved(huntEntity)) return;
 
-	float percentage = (float) state->solvedHuntEntities / (float) state->requiredHuntEntities;
-
-	if (ClientWindow::get()->getJinglesSettingSafe() == "Minimal") {
-		APAudioPlayer::get()->PlayAudio(APJingle::UnderstatedEntityHunt, APJingleBehavior::Queue);
+	std::pair<int, int> solved_and_total = { state->solvedHuntEntities, state->requiredHuntEntities };
+	if (ClientWindow::get()->getJinglesSettingSafe() != "Full") {
+		APAudioPlayer::get()->PlayAudio(APJingle::UnderstatedEntityHunt, APJingleBehavior::Queue, solved_and_total);
 	}
 	else {
-		APAudioPlayer::get()->PlayAudio(APJingle::EntityHunt, APJingleBehavior::Queue, percentage);
+		APAudioPlayer::get()->PlayAudio(APJingle::EntityHunt, APJingleBehavior::Queue, solved_and_total);
 	}
 }
 
@@ -3621,10 +3700,16 @@ int APWatchdog::LookingAtEasterEgg()
 
 int APWatchdog::HandleEasterEgg()
 {
-	int pNO = ap->get_player_number();
 	if (!firstActionDone) {
-		ap->SetNotify({ "WitnessEasterEggStatus" + std::to_string(pNO) + "_" + Utilities::wstring_to_utf8(Utilities::GetUUID()) });
-		ap->Set("WitnessEasterEggStatus" + std::to_string(pNO) + "_" + Utilities::wstring_to_utf8(Utilities::GetUUID()), nlohmann::json::object(), true, { { "default", nlohmann::json::object() } });
+		std::set<int> previouslyUnlockedEggs = CustomSaveGameManager::get().readValue<std::set<int>>("EasterEggs", {});
+
+		UnlockEggs(previouslyUnlockedEggs, true);
+
+		int pNO = ap->get_player_number();
+		if (SyncProgress) {
+			ap->SetNotify({ "WitnessEasterEggStatus" + std::to_string(pNO) });
+			ap->Set("WitnessEasterEggStatus" + std::to_string(pNO), nlohmann::json::object(), true, { { "default", nlohmann::json::object()  } });
+		}
 	}
 
 	InteractionState interactionState = InputWatchdog::get()->getInteractionState();
@@ -3677,11 +3762,14 @@ int APWatchdog::HandleEasterEgg()
 			easterEggToSolveStatus[lookingAtEgg] = true;
 			if (ClientWindow::get()->getJinglesSettingSafe() != "Off") APAudioPlayer::get()->PlayAudio(APJingle::Plop, APJingleBehavior::PlayImmediate);
 
+			std::set<int> newEgg = { lookingAtEgg };
+			CustomSaveGameManager::get().updateValue("EasterEggs", newEgg);
+
+			int pNO = ap->get_player_number();
 			std::string lookingAtEggString = Utilities::entityStringRepresentation(lookingAtEgg);
-			std::map<std::string, bool> newEgg = {{ lookingAtEggString, true }};
-			ap->Set("WitnessEasterEggStatus" + std::to_string(pNO), nlohmann::json::object(), false, { { "update" , newEgg } });
-			ap->Set("WitnessEasterEggStatus" + std::to_string(pNO) + "_" + Utilities::wstring_to_utf8(Utilities::GetUUID()), nlohmann::json::object(), false, { { "update" , newEgg } });
-		
+			std::map<std::string, bool> newEggMap = { { lookingAtEggString, true } };
+			ap->Set("WitnessEasterEggStatus" + std::to_string(pNO), nlohmann::json::object(), false, { { "update" , newEggMap } });
+
 			int eggCount = 0;
 			int eggTotal = 0;
 			for (auto [egg, status] : easterEggToSolveStatus) {
@@ -4357,7 +4445,8 @@ void APWatchdog::CheckUnlockedWarps() {
 	int pNO = ap->get_player_number();
 
 	if (!firstActionDone) {
-		ap->SetNotify({ "WitnessUnlockedWarps" + std::to_string(pNO) + "_" + Utilities::wstring_to_utf8(Utilities::GetUUID()) });
+		std::vector<std::string> previouslyUnlockedWarps = CustomSaveGameManager::get().readValue<std::vector<std::string>>("UnlockedWarps", {});
+		UnlockWarps(previouslyUnlockedWarps, true);
 
 		if (SyncProgress) {
 			ap->SetNotify({ "WitnessUnlockedWarps" + std::to_string(pNO) });
@@ -4366,7 +4455,6 @@ void APWatchdog::CheckUnlockedWarps() {
 		std::map<std::string, bool> startwarp = { };
 
 		ap->Set("WitnessUnlockedWarps" + std::to_string(pNO), nlohmann::json::object(), true, { { "default", startwarp } });
-		ap->Set("WitnessUnlockedWarps" + std::to_string(pNO) + "_" + Utilities::wstring_to_utf8(Utilities::GetUUID()), startwarp, true, { {"default", nlohmann::json::object()} });
 	}
 
 	Vector3 playerPosition = Vector3(Memory::get()->ReadPlayerPosition());
@@ -4380,12 +4468,12 @@ void APWatchdog::CheckUnlockedWarps() {
 		
 		if ((playerPosition - warpPosition).length() > WARP_SPHERE_RADIUS + 1.2f) continue;
 
-		UnlockWarps({ warpname });
+		UnlockWarps({ warpname }, true);
 		return;
 	}
 }
 
-void APWatchdog::UnlockWarps(std::vector<std::string> warps) {
+void APWatchdog::UnlockWarps(std::vector<std::string> warps, bool local) {
 	std::vector<std::string> newWarps = {};
 	
 	for (auto warp : warps) {
@@ -4407,6 +4495,12 @@ void APWatchdog::UnlockWarps(std::vector<std::string> warps) {
 
 	std::string message = "Unlocked Warp";
 	if (newWarps.size() > 1) message += "s";
+
+	if (!local) {
+		message = "Unlocked Warp (Coop)";
+		if (newWarps.size() > 1) message = "Unlocked Warps (Coop)";
+	}
+
 	message += ":";
 	for (auto warp : newWarps) {
 		message += " " + warp + ",";
@@ -4424,12 +4518,15 @@ void APWatchdog::UnlockWarps(std::vector<std::string> warps) {
 	HudManager::get()->queueNotification(message, getColorByItemFlag(APClient::ItemFlags::FLAG_ADVANCEMENT));
 
 	std::map<std::string, bool> warpsToSignalToDataStore;
+	std::set<std::string> warpsToSaveInSavegame;
 	for (std::string warp : newWarps) {
 		warpsToSignalToDataStore[warp] = true;
+		warpsToSaveInSavegame.insert(warp);
 	}
 
 	int pNO = ap->get_player_number();
 
 	ap->Set("WitnessUnlockedWarps" + std::to_string(pNO), nlohmann::json::object(), false, { { "update" , warpsToSignalToDataStore } });
-	ap->Set("WitnessUnlockedWarps" + std::to_string(pNO) + "_" + Utilities::wstring_to_utf8(Utilities::GetUUID()), nlohmann::json::object(), false, { { "update" , warpsToSignalToDataStore } });
+
+	CustomSaveGameManager::get().updateValue("UnlockedWarps", warpsToSaveInSavegame);
 }
