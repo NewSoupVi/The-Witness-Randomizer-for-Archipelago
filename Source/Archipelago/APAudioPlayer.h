@@ -119,6 +119,7 @@ inline const std::vector<int> entityHuntJingles = {
 };
 
 const int finalPanelHuntJingle = IDR_WAVE92;
+const int finalPanelHuntJingleUnderstated = IDR_WAVE93;
 
 namespace SoLoud {
 	class Soloud;

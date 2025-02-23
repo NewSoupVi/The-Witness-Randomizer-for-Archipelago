@@ -234,6 +234,8 @@ IDR_WAVE91              WAVE                    "..\\Music\\Easter Useful.ogg"
 
 IDR_WAVE92              WAVE                    "..\\Music\\Panel Hunt Final.ogg"
 
+IDR_WAVE93              WAVE                    "..\\Music\\Panel Hunt Understated Final.ogg"
+
 #endif    // Deutsch (Deutschland) resources
 /////////////////////////////////////////////////////////////////////////////
 

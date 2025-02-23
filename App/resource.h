@@ -94,6 +94,7 @@
 #define IDR_WAVE90                      253
 #define IDR_WAVE91                      254
 #define IDR_WAVE92                      255
+#define IDR_WAVE93                      256
 
 // Next default values for new objects
 // 

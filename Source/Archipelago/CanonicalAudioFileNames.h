@@ -75,6 +75,7 @@ inline std::map<int, std::vector<std::string>> canonicalAudioFileNames = {
 	{ IDR_WAVE54, { "Panel Hunt 7.wav", "Panel Hunt 6.wav", "Panel Hunt 5.wav", "Panel Hunt 4.wav", "Panel Hunt 3.wav", "Panel Hunt 2.wav", "Panel Hunt 1.wav", "Panel Hunt.wav", }},
 	{ IDR_WAVE59, { "Panel Useful 5.wav", "Panel Useful 4.wav", "Panel Useful 3.wav", "Panel Useful 2.wav", "Panel Useful 1.wav", "Panel Useful.wav", }},
 	{ IDR_WAVE60, { "Panel Hunt Understated.wav", }},
+	{ IDR_WAVE93, { "Panel Hunt Understated Final.wav", "Panel Hunt Understated.wav" }},
 	{ IDR_WAVE55, { "Panel Hunt 8.wav", "Panel Hunt 7.wav", "Panel Hunt 6.wav", "Panel Hunt 5.wav", "Panel Hunt 4.wav", "Panel Hunt 3.wav", "Panel Hunt 2.wav", "Panel Hunt 1.wav", "Panel Hunt.wav", }},
 	{ IDR_WAVE57, { "Panel Hunt 9.wav", "Panel Hunt 8.wav", "Panel Hunt 7.wav", "Panel Hunt 6.wav", "Panel Hunt 5.wav", "Panel Hunt 4.wav", "Panel Hunt 3.wav", "Panel Hunt 2.wav", "Panel Hunt 1.wav", "Panel Hunt.wav", }},
 	{ IDR_WAVE74, { "Panel Hunt 10.wav", "Panel Hunt 9.wav", "Panel Hunt 8.wav", "Panel Hunt 7.wav", "Panel Hunt 6.wav", "Panel Hunt 5.wav", "Panel Hunt 4.wav", "Panel Hunt 3.wav", "Panel Hunt 2.wav", "Panel Hunt 1.wav", "Panel Hunt.wav", }},

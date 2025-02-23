@@ -3014,11 +3014,11 @@ void APWatchdog::PlayEntityHuntJingle(const int& huntEntity) {
 
 	if (panelIdToLocationId_READ_ONLY.count(huntEntity) && !CheckPanelHasBeenSolved(huntEntity)) return;
 
-	if (ClientWindow::get()->getJinglesSettingSafe() == "Minimal") {
-		APAudioPlayer::get()->PlayAudio(APJingle::UnderstatedEntityHunt, APJingleBehavior::Queue);
+	std::pair<int, int> solved_and_total = { state->solvedHuntEntities, state->requiredHuntEntities };
+	if (ClientWindow::get()->getJinglesSettingSafe() != "Full") {
+		APAudioPlayer::get()->PlayAudio(APJingle::UnderstatedEntityHunt, APJingleBehavior::Queue, solved_and_total);
 	}
 	else {
-		std::pair<int, int> solved_and_total = { state->solvedHuntEntities, state->requiredHuntEntities };
 		APAudioPlayer::get()->PlayAudio(APJingle::EntityHunt, APJingleBehavior::Queue, solved_and_total);
 	}
 }

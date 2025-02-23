@@ -138,6 +138,16 @@ void APAudioPlayer::PlayAppropriateJingle(APJingle jingle, std::any extraFlag, b
 
 	auto now = std::chrono::system_clock::now();
 
+	if (jingle == APJingle::UnderstatedEntityHunt) {
+		std::pair<int, int> solved_and_total = std::any_cast<std::pair<int, int>>(extraFlag);
+		int solved = solved_and_total.first;
+		int required = solved_and_total.second;
+		if (solved == required) {
+			// Special last jingle
+			PlayJingle(finalPanelHuntJingleUnderstated, async);
+			return;
+		}
+	}
 	if (jingle == APJingle::EntityHunt) {
 		std::pair<int, int> solved_and_total = std::any_cast<std::pair<int, int>>(extraFlag);
 		int solved = solved_and_total.first;
