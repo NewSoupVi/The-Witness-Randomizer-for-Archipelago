@@ -2486,7 +2486,7 @@ inline RgbColor EGG_YELLOW = RgbColor(1.0f, 1.0f, 0.2f, 1.0f);
 
 inline std::map<int, std::pair<Vector3, RgbColor>> easterEggs = {
 	// Inside Tutorial
-	{ 0xEE000, {{-152.005, -148.911, 7.39702}, EGG_WHITE * 1.0f}}, // Near Center Row 2, NewSoupVi
+	{ 0xEE000, {{-152.005, -148.911, 7.39702}, EGG_MAGENTA * 1.0f}}, // Near Center Row 2, NewSoupVi
 
 	// Outside Tutorial
 	{ 0xEE001, {{-126.076, -171.657, 15.6509}, EGG_RED * 11.0f}}, // Gate Wall, NewSoupVi
