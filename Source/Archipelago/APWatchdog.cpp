@@ -4109,9 +4109,17 @@ void APWatchdog::CheckFinalRoom() {
 }
 
 void APWatchdog::DoAprilFoolsEffects(float deltaSeconds) {
-	// Windmill
-	
 	Memory* memory = Memory::get();
+
+	// Broken Panel Effects
+
+	if (doneKhatzEffects * 10 < timePassedSinceRandomisation) {
+		int random_index = std::rand() % memory->khatzJumpInstructions.size();
+		memory->ForceKhatzEffect(random_index);
+		doneKhatzEffects += 1;
+	}
+
+	// Windmill
 
 	bool windmill_turning;
 	memory->ReadAbsolute(reinterpret_cast<LPCVOID>(memory->windmillCurrentlyTurning), &windmill_turning, sizeof(bool));

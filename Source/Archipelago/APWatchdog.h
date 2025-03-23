@@ -158,13 +158,11 @@ private:
 
 	std::chrono::system_clock::time_point lastFrameTime;
 	float halfSecondCountdown = 0.f;
-	float timePassedSinceRandomisation = 0.0f;
-	float timePassedSinceFirstJinglePlayed = 0.0f;
+	double timePassedSinceRandomisation = 0.0f;
+	double timePassedSinceFirstJinglePlayed = 0.0f;
 
 	bool firstTimeActiveEntity = false;
 	bool deathLinkFirstResponse = false;
-
-	int halfSecondCounter = 0;
 
 	int mostRecentItemId = -1;
 
@@ -200,6 +198,8 @@ private:
 	int EggHuntDifficulty = 0;
 	int HighestRealEggCheck = 0; // Not excluded
 	int HighestEggCheck = 0;
+
+	int doneKhatzEffects = 0;
 
 	std::map<int, int> doorToItemId;
 

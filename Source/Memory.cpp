@@ -364,17 +364,118 @@ bool Memory::SetInfiniteChallenge(bool enable) {
 	return true;
 }
 
+void Memory::PatchUpdatePanelForKhatz() {
+	// In order for cursor-based moving background 1 to work, the code at 1400C5E19 needs to be replaced
+	// with the code at 1400C5E54, which checks for active entity instead.
+	// The instructions need to be nop-ed until (but not including) 1400C5E33
+	// The relative address of the call instruction needs to be adjusted.
+	// Then, you still need to replace jne with e.g. jo at 1400C5E4E to actually apply the effect.
+
+	uint64_t getActivePanelOriginalLocation = updatePanelIsCurrentPanelInstructions + 1;
+	uint64_t jumpToResetPanelOffsetOriginalLocation = updatePanelIsCurrentPanelInstructions + 10;
+
+	uint32_t getActivePanelOffset = 0;
+	uint32_t jumpToResetPanelOffset = 0;
+
+	ReadAbsolute(reinterpret_cast<LPCVOID>(getActivePanelOriginalLocation), &getActivePanelOffset, sizeof(uint32_t));
+	ReadAbsolute(reinterpret_cast<LPCVOID>(jumpToResetPanelOffsetOriginalLocation), &jumpToResetPanelOffset, sizeof(uint32_t));
+
+	char activePanelPatch[] =
+		"\xE8\x00\x00\x00\x00" // Will be call get_active_panel
+		"\x48\x3B\xD8" // cmp rbx, rax
+		"\x0F\x85\x00\x00\x00\x00" // jne (to reset crawl panel offset panel offset)
+		"\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90"; // nop space until the next real instruction
+
+	// Since we're moving these earlier, we have to add the distance to the offsets
+	getActivePanelOffset += (updatePanelIsCurrentPanelInstructions - updatePanelKhatzInitialStringComparison);
+	jumpToResetPanelOffset += (updatePanelIsCurrentPanelInstructions - updatePanelKhatzInitialStringComparison);
+
+	activePanelPatch[1] = getActivePanelOffset & 0xff;
+	activePanelPatch[2] = (getActivePanelOffset >> 8) & 0xff;
+	activePanelPatch[3] = (getActivePanelOffset >> 16) & 0xff;
+	activePanelPatch[4] = (getActivePanelOffset >> 24) & 0xff;
+	activePanelPatch[10] = jumpToResetPanelOffset & 0xff;
+	activePanelPatch[11] = (jumpToResetPanelOffset >> 8) & 0xff;
+	activePanelPatch[12] = (jumpToResetPanelOffset >> 16) & 0xff;
+	activePanelPatch[13] = (jumpToResetPanelOffset >> 24) & 0xff;
+
+	// We also have to make sure that resetting actually resets both crawl_t and crawl_theta.
+	// For this, we just make the crawl_t code jump to crawl_theta instead of jumping to the end of the function.
+	// We already know the offset, so:
+	uint64_t jmpInstructionFromResetCrawlT = updatePanelKhatzInitialStringComparison + jumpToResetPanelOffset + 0x18;
+	uint32_t jmpInstructionFromResetCrawlToffset;
+	ReadAbsolute(reinterpret_cast<LPCVOID>(jmpInstructionFromResetCrawlT + 1), &jmpInstructionFromResetCrawlToffset, sizeof(uint32_t));
+
+	// The place this needs to jmp to would be complicated to figure out, but in all versions I have access to, it's just 0xA earlier, so we just do that.
+	jmpInstructionFromResetCrawlToffset -= 0xA;
+	WriteAbsolute(reinterpret_cast<void*>(jmpInstructionFromResetCrawlT + 1), &jmpInstructionFromResetCrawlToffset, sizeof(uint32_t));
+
+	// The place this needs to go instead is complicated to figure out
+
+	// Make the active panel update the panel offset, rather than specifically the khatz panels
+	WriteProcessMemory(_handle, reinterpret_cast<void*>(updatePanelKhatzInitialStringComparison), activePanelPatch, sizeof(activePanelPatch) - 1, NULL);
+
+
+}
+
 void Memory::EnableKhatzEffects(bool enable)
 {
-	// 1400C39F0 in humble version
-	// Noting this down because with a few jne -> nop replacements you can make EVERY PANEL IN THE GAME DO ONE OF THE MOVING BACKGROUND EFFECTS
 	if (enable) {
 		char originalBytes[] = "\x0F\x85"; // jne
-		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(khatzJumpInstruction), originalBytes, sizeof(originalBytes) - 1, NULL);
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(firstKhatzInstruction), originalBytes, sizeof(originalBytes) - 1, NULL);
 	}
 	else {
-		char patchedbytes[] = "\x90\xE9"; // nop jmp
-		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(khatzJumpInstruction), patchedbytes, sizeof(patchedbytes) - 1, NULL);
+		char forceOffBytes[] = "\x90\xE9"; // nop jmp
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(firstKhatzInstruction), forceOffBytes, sizeof(forceOffBytes) - 1, NULL);
+	}
+}
+
+void Memory::KhatzForce(int i, bool on) {
+	char longJmpForceOnBytes[] = "\xEB\x04"; // jmp 4, this will skip the jmp while keeping the 4 address bytes intact
+	char longJmpForceOffBytes[] = "\x0F\x81"; // jno (Jump if not overflow, should always trigger here)
+
+	char shortJmpForceOnBytes[] = "\x72"; // jc (jump if carry, should never trigger here)
+	char shortJmpForceOffBytes[] = "\xEB"; // jmp (1 byte positional)
+
+	char* longBytes = on ? longJmpForceOnBytes : longJmpForceOffBytes;
+	char* shortBytes = on ? shortJmpForceOnBytes : shortJmpForceOffBytes;
+
+	if (i >= 5) {
+		// Have to also force on/off in Entity_Machine_Panel::update
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(updatePanelKhatzIndividualStringComparisons[i - 5]), longBytes, 2, NULL);
+	}
+
+	if (i == 6) {
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(khatzJumpInstructions[i]), longBytes, 2, NULL);
+	}
+	else {
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(khatzJumpInstructions[i]), shortBytes, 1, NULL);
+	}
+}
+
+void Memory::ForceKhatzEffect(int index) {
+	// 1400C39F0 in humble version
+
+	char longJmpOriginalBytes[] = "\x0F\x85"; // jne
+	char shortJmpOriginalBytes[] = "\x75"; // jne
+
+	char longJmpForceOnBytes[] = "\xEB\x04"; // jmp 4, this will skip the jmp while keeping the 4 address bytes intact
+
+	if (index == -1) { // restore normal
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(firstKhatzInstruction), longJmpOriginalBytes, sizeof(longJmpOriginalBytes) - 1, NULL);
+		for (int i = 0; i < 6; i++) {
+			WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(khatzJumpInstructions[i]), shortJmpOriginalBytes, sizeof(shortJmpOriginalBytes) - 1, NULL);
+		}
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(khatzJumpInstructions[6]), longJmpOriginalBytes, sizeof(longJmpOriginalBytes) - 1, NULL);
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(updatePanelKhatzIndividualStringComparisons[0]), longJmpOriginalBytes, sizeof(longJmpOriginalBytes) - 1, NULL);
+		WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(updatePanelKhatzIndividualStringComparisons[1]), longJmpOriginalBytes, sizeof(longJmpOriginalBytes) - 1, NULL);
+
+		return;
+	}
+
+	WriteProcessMemory(_handle, reinterpret_cast<LPVOID>(firstKhatzInstruction), longJmpForceOnBytes, sizeof(longJmpForceOnBytes) - 1, NULL);
+	for (int i = 0; i < khatzJumpInstructions.size(); i++) {
+		KhatzForce(i, index == i);
 	}
 }
 
@@ -418,6 +519,10 @@ void Memory::ForceStopChallenge()
 }
 
 void Memory::applyDestructivePatches() {
+	if (Utilities::isAprilFools()) {
+		PatchUpdatePanelForKhatz();
+	}
+
 	//Cursor size
 	char asmBuff[] = "\xBB\x00\x00\x80\x3F\x66\x44\x0F\x6E\xCB\x90\x90\x90";
 	/*mov ebx, 3F800000
@@ -508,13 +613,64 @@ void Memory::findImportantFunctionAddresses(){
 	});
 
 	executeSigScan({ 0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57, 0x48, 0x83, 0xEC, 0x70, 0x0F }, [this](__int64 offset, int index, const std::vector<byte>& data) {
+		
 		for (; index < data.size(); index++) {
 			if (data[index - 2] == 0x85 && data[index - 1] == 0xC0 && data[index] == 0x0F && data[index + 1] == 0x85) {
-				this->khatzJumpInstruction = _baseAddress + offset + index;
+				firstKhatzInstruction = _baseAddress + offset + index;
+				break;
+			}
+		}
+		index++;
+		int found = 0;
+		for (; index < data.size(); index++) {
+			if (data[index - 2] == 0x85 && data[index - 1] == 0xC0 && data[index] == 0x75) {
+				this->khatzJumpInstructions.push_back(_baseAddress + offset + index);
+				found++;
+			}
+			if (data[index - 2] == 0x85 && data[index - 1] == 0xC0 && data[index] == 0x0F && data[index + 1] == 0x85) {
+				this->khatzJumpInstructions.push_back(_baseAddress + offset + index);
+				found++;
+			}
+			if (found == 7) { // should be 7 distortion effects
 				return true;
 			}
 		}
+
 		return false;
+	});
+
+	executeSigScan({ 0x76, 0x0A, 0xC7, 0x83, 0x0C, 0x03, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x40, 0xB6, 0x01 }, [this](__int64 offset, int index, const std::vector<byte>& data) {
+		int found = 0;
+		for (; index < data.size(); index++) {
+			if (data[index] == 0x48 && data[index + 1] == 0x8D && data[index + 2] == 0x15) {
+				this->updatePanelKhatzInitialStringComparison = _baseAddress + offset + index;
+				found++;
+				break;
+			}
+		}
+		index += 0x17; // past that section
+		for (; index < data.size(); index++) {
+			if (data[index - 2] == 0x85 && data[index - 1] == 0xC0 && data[index] == 0x0F && data[index + 1] == 0x85) {
+				this->updatePanelKhatzIndividualStringComparisons.push_back(_baseAddress + offset + index);
+				found++;
+				break;
+			}
+		}
+		for (; index < data.size(); index++) {
+			if (data[index] == 0xE8 && data[index + 5] == 0x48 && data[index + 6] == 0x3B) {
+				this->updatePanelIsCurrentPanelInstructions = _baseAddress + offset + index;
+				found++;
+				break;
+			}
+		}
+		for (; index < data.size(); index++) {
+			if (data[index - 2] == 0x85 && data[index - 1] == 0xC0 && data[index] == 0x0F && data[index + 1] == 0x85) {
+				this->updatePanelKhatzIndividualStringComparisons.push_back(_baseAddress + offset + index);
+				found++;
+				break;
+			}
+		}
+		return found == 4;
 	});
 
 	executeSigScan({ 0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B, 0xEA, 0x4C, 0x8B }, [this](__int64 offset, int index, const std::vector<byte>& data) {
