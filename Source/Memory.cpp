@@ -410,12 +410,8 @@ void Memory::PatchUpdatePanelForKhatz() {
 	jmpInstructionFromResetCrawlToffset -= 0xA;
 	WriteAbsolute(reinterpret_cast<void*>(jmpInstructionFromResetCrawlT + 1), &jmpInstructionFromResetCrawlToffset, sizeof(uint32_t));
 
-	// The place this needs to go instead is complicated to figure out
-
 	// Make the active panel update the panel offset, rather than specifically the khatz panels
 	WriteProcessMemory(_handle, reinterpret_cast<void*>(updatePanelKhatzInitialStringComparison), activePanelPatch, sizeof(activePanelPatch) - 1, NULL);
-
-
 }
 
 void Memory::EnableKhatzEffects(bool enable)
