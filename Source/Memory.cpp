@@ -515,10 +515,6 @@ void Memory::ForceStopChallenge()
 }
 
 void Memory::applyDestructivePatches() {
-	if (Utilities::isAprilFools()) {
-		PatchUpdatePanelForKhatz();
-	}
-
 	//Cursor size
 	char asmBuff[] = "\xBB\x00\x00\x80\x3F\x66\x44\x0F\x6E\xCB\x90\x90\x90";
 	/*mov ebx, 3F800000
