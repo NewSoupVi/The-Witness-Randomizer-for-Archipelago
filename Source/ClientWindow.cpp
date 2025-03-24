@@ -131,7 +131,12 @@ void ClientWindow::loadSettings()
 
 			setSetting(ClientToggleSetting::SyncProgress, data.contains("syncprogress") ? data["syncprogress"].get<bool>() : false);
 			setSetting(ClientToggleSetting::HighContrast, data.contains("highcontrast") ? data["highcontrast"].get<bool>() : false);
-			setSetting(ClientToggleSetting::PanelEffects, data.contains("paneleffects") ? data["paneleffects"].get<bool>() : false);
+
+			bool panelEffectsFromSave = data.contains("paneleffects") ? data["paneleffects"].get<bool>() : false;
+			if (Utilities::isAprilFools()) {
+				panelEffectsFromSave = false;
+			}
+			setSetting(ClientToggleSetting::PanelEffects, panelEffectsFromSave);
 			setSetting(ClientToggleSetting::ExtraInfo, data.contains("extrainfo") ? data["extrainfo"].get<bool>() : true);
 			setSetting(ClientToggleSetting::Warps, data.contains("warps") ? data["warps"].get<bool>() : false);
 
@@ -688,7 +693,8 @@ void ClientWindow::addGameOptions(int& currentY) {
 	currentY += STATIC_TEXT_HEIGHT + LINE_SPACING;
 
 	// Panel Effects
-	HWND hwndOptionTurnOffMountainEffects = CreateWindow(L"BUTTON", L"Disable damaged panel effects",
+	LPCWSTR label = Utilities::isAprilFools() ? L"Disable damaged panel effects :)" : L"Disable damaged panel effects";
+	HWND hwndOptionTurnOffMountainEffects = CreateWindow(L"BUTTON", label,
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_CHECKBOX | BS_MULTILINE,
 		CONTROL_MARGIN, currentY,
 		CLIENT_WINDOW_WIDTH - STATIC_TEXT_MARGIN, STATIC_TEXT_HEIGHT,
