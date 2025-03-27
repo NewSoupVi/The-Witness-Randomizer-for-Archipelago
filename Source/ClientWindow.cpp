@@ -693,8 +693,7 @@ void ClientWindow::addGameOptions(int& currentY) {
 	currentY += STATIC_TEXT_HEIGHT + LINE_SPACING;
 
 	// Panel Effects
-	LPCWSTR label = Utilities::isAprilFools() ? L"Disable damaged panel effects :)" : L"Disable damaged panel effects";
-	HWND hwndOptionTurnOffMountainEffects = CreateWindow(L"BUTTON", label,
+	HWND hwndOptionTurnOffMountainEffects = CreateWindow(L"BUTTON", Utilities::isAprilFools() ? L"Disable damaged panel effects :)" : L"Disable damaged panel effects",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_CHECKBOX | BS_MULTILINE,
 		CONTROL_MARGIN, currentY,
 		CLIENT_WINDOW_WIDTH - STATIC_TEXT_MARGIN, STATIC_TEXT_HEIGHT,

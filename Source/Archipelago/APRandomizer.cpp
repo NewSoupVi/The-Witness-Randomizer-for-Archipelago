@@ -842,6 +842,12 @@ void APRandomizer::DisableColorCycle() {
 	memory->EnableKhatzEffects(false);
 }
 
+void APRandomizer::PatchColorCycle() {
+	if (Utilities::isAprilFools()) {
+		Memory::get()->PatchUpdatePanelForKhatz();
+	}
+}
+
 void APRandomizer::setPuzzleLocks() {
 	ClientWindow* clientWindow = ClientWindow::get();
 	Memory* memory = Memory::get();

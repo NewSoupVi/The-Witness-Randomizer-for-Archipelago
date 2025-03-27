@@ -59,6 +59,8 @@ class APRandomizer {
 		void ColorBlindAdjustments();
 		void DisableColorCycle();
 
+		void PatchColorCycle();
+
 		void SkipPuzzle();
 
 		void SeverDoors();

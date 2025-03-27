@@ -29,7 +29,6 @@
 #include <Archipelago/APGameData.h>
 #include <Archipelago/ASMPayloadManager.h>
 #include <HUDManager.h>
-#include <Utilities.h>
 
 
 #define IDC_RANDOMIZE 0x401
@@ -260,8 +259,8 @@ void Main::randomize() {
 		clientWindow->logLine("Disabling/Enabling color cycle effects.");
 		apRandomizer->DisableColorCycle();
 	}
-	else if (Utilities::isAprilFools()) {
-		memory->PatchUpdatePanelForKhatz();
+	else {
+		apRandomizer->PatchColorCycle();
 	}
 
 	clientWindow->setStatusMessage("Restoring vanilla puzzles...");
