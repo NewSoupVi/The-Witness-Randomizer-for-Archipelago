@@ -209,7 +209,7 @@ inline const std::set<int> trivial_panels = { // Not exhaustive probably
 };
 
 inline const std::set<int> door_timers = {
-	0x17CBC, 0x334DB, 0x334DC, 0x2700B, 0x17F33
+	0x17CBC, 0x334DB, 0x334DC, 0x2700B, 0x334E1
 };
 
 // Puzzles that don't make sense to skip on Normal but are useful to skip on Hard.
