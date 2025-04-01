@@ -3686,6 +3686,7 @@ int APWatchdog::LookingAtEasterEgg()
 			for (Vector3 mouseRay : InputWatchdog::get()->getCone()) {
 				Vector3 v = eggSphere.position - headPosition;
 				float t = mouseRay * v;
+				if (t < 0) continue;
 				Vector3 p = headPosition + mouseRay * t;
 				float distance = (p - eggSphere.position).length();
 				if (distance < eggSphere.radius) {
