@@ -4113,10 +4113,12 @@ void APWatchdog::DoAprilFoolsEffects(float deltaSeconds) {
 
 	// Broken Panel Effects
 
-	if (doneKhatzEffects * 10 < timePassedSinceRandomisation) {
-		int random_index = std::rand() % memory->khatzJumpInstructions.size();
-		memory->ForceKhatzEffect(random_index);
-		doneKhatzEffects += 1;
+	if (!ClientWindow::get()->getSetting(ClientToggleSetting::PanelEffects)) {
+		if (doneKhatzEffects * 10 < timePassedSinceRandomisation) {
+			int random_index = std::rand() % memory->khatzJumpInstructions.size();
+			memory->ForceKhatzEffect(random_index);
+			doneKhatzEffects += 1;
+		}
 	}
 
 	// Windmill
