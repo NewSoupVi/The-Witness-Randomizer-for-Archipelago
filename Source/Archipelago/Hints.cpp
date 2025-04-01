@@ -82,6 +82,7 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Undertale?\nI hope I'm not the 10th person to ask you that. But it's, like, really good.",
     "Have you tried VVVVVV?\nExperience the essence of gaming distilled into its purest form!",
     "Have you tried Wargroove?\nI'm glad that for every abandoned series, enough people are yearning for its return that one of them will know how to code.",
+    "Have you tried The Wind Waker?\nOnce you do, please tell me why the weather needs an alarm clock.",
     "Have you tried The Witness?\nOh. I guess you already have. Thanks for playing!",
     "Have you tried Yacht Dice?\nIt's always fascinating how they turn simple clubhouse games into full AP implementations.",
     "Have you tried Yoshi's Island?\nSome might say it's the best 2D platformer ever made.\nBy which I mean me. I'm saying that. Go play it >:(((",
