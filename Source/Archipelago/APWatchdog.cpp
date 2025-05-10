@@ -3303,7 +3303,8 @@ void APWatchdog::SetStatusMessages() {
 	}
 	else if (interactionState == InteractionState::Sleeping || interactionState == InteractionState::MenuAndSleeping) {
 		if (selectedWarp == NULL) {
-			HudManager::get()->setWalkStatusMessage("Sleeping.");
+			std::string sleepButtonText = inputWatchdog->getNameForInputButton(inputWatchdog->getCustomKeybind(CustomKey::SLEEP));
+			HudManager::get()->setWalkStatusMessage("Sleeping. Press [" + sleepButtonText + "] to wake up.");
 		} else {
 			std::string message = "Sleeping. Press [" + inputWatchdog->getNameForInputButton(inputWatchdog->getCustomKeybind(CustomKey::SKIP_PUZZLE)) + "] to warp to: " + selectedWarp->name;
 			if (unlockedWarps.size() > 1 && ClientWindow::get()->getSetting(ClientToggleSetting::ExtraInfo)) {
