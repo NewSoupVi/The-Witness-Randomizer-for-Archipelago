@@ -258,6 +258,7 @@ struct LockableEP : LockablePuzzle {
 	void Restore();
 	void DisableEP(bool recolor, bool disableEndPoint);
 	void LockEP(bool disable, bool recolor, bool disableEndPoint);
+	int getSafePressurePlatePatternPointID(int ppID);
 };
 
 struct LockableObelisk : LockablePuzzle {

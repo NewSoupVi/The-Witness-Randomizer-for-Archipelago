@@ -2,7 +2,7 @@
 
 const std::string& GetCreditsHint() {
   static const std::string creditsHint = "This Randomizer is brought to you by\n"
-    "NewSoupVi, Jarno, blastron,\n"
+    "NewSoupVi, Jarno, blastron, Quas NaArt,\n"
     "jbzdarkid, sigma144, IHNN, oddGarrett, Exempt-Medic, hatkirby.";
   return creditsHint;
 }
@@ -10,7 +10,7 @@ const std::string& GetCreditsHint() {
 const std::vector<std::string>& GetJokeHints() {
   static const std::vector<std::string> jokeHints = {
     "Have you tried Adventure?\n...Holy crud, that game is 17 years older than me.",
-    reinterpret_cast<const char*>(u8"Have you tried Aquaria?\nAdmittedly, singing is a much cooler interaction mechanic than \"drawing lines on stuff\"™."),
+    u8"Have you tried Aquaria?\nAdmittedly, singing is a much cooler interaction mechanic than \"drawing lines on stuff\"â„¢.",
     "Have you tried A Hat in Time?\nThere's an actual metro in that game, not just one on the tracker.",
     "Have you tried A Link to the Past?\nThe Archipelago game that started it all!",
     "Waiting to get your items?\nTry APSudoku! Make progress even while stuck.",
@@ -18,21 +18,25 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Bomb Rush Cyberfunk?\nYou may try to strike it down, but the spirit of Jet Set Radio lives on.",
     "Have you tried Bumper Stickers?\nDecades after its inception, people are still inventing unique twists on the match-3 genre.",
     "Have you tried Bumper Stickers?\nMaybe after spending so much time on this island, you are longing for a simpler puzzle game.",
+    "Have you tried Castlevania: Circle of the Moon?\nHas anyone tried telling Konami that the moon isn't a circle most of the time?",
     "Have you tried Celeste 64?\nYou need smol low-poly Madeline in your life. TRUST ME.",
     "Have you tried ChecksFinder?\nIf you like puzzles, you might enjoy it!",
     "Have you tried Clique?\nIt's certainly a lot less complicated than this game!",
     "Have you tried Castlevania 64?\nMaybe you can get Malus to play \"In the Hall of the Mountain King\".",
+    "Have you tried Civilization VI?\nSomeone should recommend this game to Vi.\nIt even has their name in it!",
     "Have you tried Dark Souls III?\nA tough game like this feels better when friends are helping you!",
     "Have you tried Donkey Kong Country 3?\nA legendary game from a golden age of platformers!",
     "Have you tried DLC Quest?\nI know you all like parody games.\nI got way too many requests to make a randomizer for \"The Looker\".",
     "Have you tried Doom?\nI wonder if a smart fridge can connect to Archipelago.",
     "Have you tried Doom II?\nGot a good game on your hands? Just make it bigger and better.",
     "Have you tried Factorio?\nAlone in an unknown multiworld. Sound familiar?",
+    "Have you tried Faxanadu?\nA wanderer who returns home... Maybe he'll start seeing a bunch of circles everywhere.",
     "Have you tried Final Fantasy?\nExperience a classic game improved to fit modern standards!",
     "Have you tried Final Fantasy Mystic Quest?\nApparently, it was made in an attempt to simplify Final Fantasy for the western market.\nThey were right, I suck at RPGs.",
     "Have you tried Heretic?\nWait, there is a Doom Engine game where you can look UP AND DOWN???",
     "Have you tried Hollow Knight?\nAnother independent hit revolutionising a genre!",
     "Have you tried Hylics 2?\nStop motion might just be the epitome of unique art styles.",
+    "Have you tried Inscryption?\nIf you've ever watched somebody play this game for the first time... you'll sympathize with the Stoat.",
     "Have you tried Kirby's Dream Land 3?\nAll good things must come to an end, including Nintendo's SNES library.\nWent out with a bang though!",
     "Have you tried Kingdom Hearts?\nI'll wait for you to name a more epic crossover.",
     "Have you tried Kingdom Hearts II?\nIt's the third game in the epic crossover series.\n...wait...",
@@ -49,8 +53,7 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Mega Man Battle Network 3?\nIt's a Mega Man RPG. How could you not want to try that?",
     "Have you tried Muse Dash?\nRhythm game with cute girls!\n(Maybe skip if you don't like the Jungle panels)",
     "Have you tried Noita?\nIf you like punishing yourself, you will like it.",
-    "Have you tried Old School RuneScape?\n",
-    "Have you tried Ocarina of Time?\nOne of the biggest randomizers, big inspiration for this one's features!",
+    "Have you tried Ocarina of Time?\nOne of the most popular randomizers, and a big inspiration for this one's features!",
     "Have you tried Old School Runescape?\nIt's the first AP game to be considered async-nonviable!",
     "Have you tried Overcooked 2?\nWhen you're done relaxing with puzzles, use your energy to yell at your friends.",
     "Have you tried Pokemon Emerald?\nI'm going to say it: 10/10, just the right amount of water.",
@@ -59,6 +62,7 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Rogue Legacy?\nAfter solving so many puzzles it's the perfect way to rest your \"thinking\" brain.",
     "Have you tried Risk of Rain 2?\nI haven't either. But I hear it's incredible!",
     "Have you tried Sonic Adventure 2?\nIf the silence on this island is getting to you, there aren't many games more energetic.",
+    "Have you tried Saving Princess?\nI wonder what the objective of the game might be.",
     "Have you tried Starcraft 2?\nUse strategy and management to crush your enemies!",
     "Have you tried Shivers?\nWitness 2 should totally feature a haunted museum.",
     "Have you tried A Short Hike?\nKnowing the audience of this randomizer, there's about a 50% chance you're a furry. So this game is probably for you.",
@@ -78,6 +82,7 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Undertale?\nI hope I'm not the 10th person to ask you that. But it's, like, really good.",
     "Have you tried VVVVVV?\nExperience the essence of gaming distilled into its purest form!",
     "Have you tried Wargroove?\nI'm glad that for every abandoned series, enough people are yearning for its return that one of them will know how to code.",
+    "Have you tried The Wind Waker?\nOnce you do, please tell me why the weather needs an alarm clock.",
     "Have you tried The Witness?\nOh. I guess you already have. Thanks for playing!",
     "Have you tried Yacht Dice?\nIt's always fascinating how they turn simple clubhouse games into full AP implementations.",
     "Have you tried Yoshi's Island?\nSome might say it's the best 2D platformer ever made.\nBy which I mean me. I'm saying that. Go play it >:(((",
@@ -167,7 +172,7 @@ const std::vector<std::string>& GetJokeHints() {
     "A non-edge start point is similar to a cat.\nIt must be either inside or outside, it can't be both.",
     "What if we kissed on the Bunker Laser Platform?\nJk... unless?",
     "You don't have Boat? Invisible boat time!\nYou do have boat? Boat clipping time!",
-    reinterpret_cast <const char*>(u8"Cet indice est en français. Nous nous excusons de tout inconvénients engendrés par cela."),
+    u8"Cet indice est en franÃ§ais. Nous nous excusons de tout inconvÃ©nients engendrÃ©s par cela.",
     "How many of you have personally witnessed a total solar eclipse?",
     "In the Treehouse area, you will find 69 progression items.\nNice.\n(Source: Just trust me)",
     "Lingo\nLingoing\nLingone",
@@ -248,7 +253,23 @@ const std::vector<std::string>& GetJokeHints() {
     "At least 1 progression item can be found in your world. Probably.",
     "Exempt have you checked Bunker EPs?",
 
-    "Hints suggested by:\nIHNN, Beaker, MrPokemon11, Ember, TheM8, NewSoupVi, Jasper Bird, T1mshady, KF, Yoshi348, Berserker, BowlinJim, oddGarrett, Pink Switch, Rever, Ishigh, snolid, CodeGorilla, Quas NaArt, Scipio, Projectyl, ManyPinkHats, m4elstrom, Kinrah, TG, transmothgirl, Aplle, Orsan.",
+    "We've started calling the Boat Bunker Yellow Line EP the \"meep\". You cannot escape this.",
+    "You're light-years away from facing Brock!",
+    "}; static const std::vector<std::string> noMoreJokeHints = {}; return noMoreJokeHints;",
+    "This audiolog was inspired by Link's Awakening DX's Marin dialogue.",
+
+    "Mmmm that laser lookin FIIIINE\nLaser, more like las-civious\n(Is this anything)",
+    "The Princess can be found at a Koopa Hotel location in Bowser's world. And you gotta help us!",
+    "It's time to take a break and get some water!",
+    "Challenge doesn't exist, it can't hurt you.",
+    "Puzzle Skip for sale\nNever used, non - smoking home\n555 - 7678",
+    "Coming soon:\nWitness 2: Now I've Seen Everything",
+    "This randomizer was brought to you by the letter \"W\".",
+    "Additional hints available for $3.99 per hint. Buy 4, get the 5th free!",
+    "It's amazing how much more readable the Archipelago server becomes after you've blocked every single moderator...",
+    "Archipelago should stop doing releases on April 1st.\nIt gives April Fools' Day a bad name.",
+
+    "Hints suggested by:\nIHNN, Beaker, MrPokemon11, Ember, TheM8, NewSoupVi, Jasper Bird, T1mshady, KF, Yoshi348, Berserker, BowlinJim, oddGarrett, Pink Switch, Rever, Ishigh, snolid, CodeGorilla, Quas NaArt, Scipio, Projectyl, ManyPinkHats, m4elstrom, Kinrah, Pineapple, TG, transmothgirl, Aplle, Orsan, Noodles.",
   };
 
   return jokeHints;

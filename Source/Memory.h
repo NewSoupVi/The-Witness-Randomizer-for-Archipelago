@@ -269,6 +269,10 @@ public:
 
 	void StopDesertLaserPropagation();
 	bool SetInfiniteChallenge(bool enable);
+	void PatchUpdatePanelForKhatz();
+	void EnableKhatzEffects(bool enable);
+	void KhatzForce(int i, bool on);
+	void ForceKhatzEffect(int index);
 	void ForceStopChallenge();
 
 	void RemoveMesh(int id);
@@ -349,6 +353,11 @@ public:
 	uint64_t windmillMaxTurnSpeed;
 	uint64_t windmillCurrentTurnSpeed;
 	uint64_t stopChallengeFunction;
+	uint64_t firstKhatzInstruction;
+	std::vector<uint64_t> khatzJumpInstructions;
+	uint64_t updatePanelKhatzInitialStringComparison;
+	uint64_t updatePanelIsCurrentPanelInstructions;
+	std::vector<uint64_t> updatePanelKhatzIndividualStringComparisons;
 
 	uint64_t globalTextureCatalog;
 	uint64_t acquireByNameFunction;

@@ -11,26 +11,37 @@ enum APJingle
 {
 	None,
 
+	EPProgUseful,
 	EPProgression,
 	EPUseful,
 	EPFiller,
 	EPTrap,
 
+	PanelProgUseful,
 	PanelProgression,
 	PanelUseful,
 	PanelFiller,
 	PanelTrap,
 
+	IncomingProgUseful,
 	IncomingProgression,
 	IncomingUseful,
 	IncomingFiller,
 	IncomingTrap,
 
+	DogProgUseful,
 	DogProgression,
 	DogUseful,
 	DogFiller,
 	DogTrap,
 
+	EasterFiller,
+	EasterProgression,
+	EasterProgUseful,
+	EasterTrap,
+	EasterUseful,
+
+	UnderstatedProgUseful,
 	UnderstatedFiller,
 	UnderstatedProgression,
 	UnderstatedTrap,
@@ -40,8 +51,10 @@ enum APJingle
 	UnderstatedEntityHunt,
 
 	Victory,
+	UnderstatedVictory,
 	FirstJingle,
-	DeathLink,
+	Bonk,
+	Plop,
 };
 
 enum APJingleBehavior
@@ -69,19 +82,22 @@ inline const std::map<std::string, std::map<std::string, int>> pillarJingles = {
 		{"progression", IDR_WAVE43},
 		{"useful", IDR_WAVE49},
 		{"trap", IDR_WAVE46},
-		{"filler", IDR_WAVE40}
+		{"filler", IDR_WAVE40},
+		{"proguseful", IDR_WAVE68},
 	}},
 	{"Ebm", {
 		{"progression", IDR_WAVE42},
 		{"useful", IDR_WAVE48},
 		{"trap", IDR_WAVE45},
-		{"filler", IDR_WAVE39}
+		{"filler", IDR_WAVE39},
+		{"proguseful", IDR_WAVE67},
 	}},
 	{"B", {
 		{"progression", IDR_WAVE41},
 		{"useful", IDR_WAVE47},
 		{"trap", IDR_WAVE44},
-		{"filler", IDR_WAVE38}
+		{"filler", IDR_WAVE38},
+		{"proguseful", IDR_WAVE66},
 	}},
 };
 
@@ -89,15 +105,21 @@ inline const std::vector<int> entityHuntJingles = {
 	IDR_WAVE52, // 1
 	IDR_WAVE61, // 8
 	IDR_WAVE62, // 9
-	IDR_WAVE54, // 3
+	IDR_WAVE75, // 12
 	IDR_WAVE56, // 5
 	IDR_WAVE53, // 2
 	IDR_WAVE55, // 4
+	IDR_WAVE54, // 3
+	IDR_WAVE74, // 14
+	IDR_WAVE76, // 13
 	IDR_WAVE57, // 6
 	IDR_WAVE64, // 11
 	IDR_WAVE58, // 7
 	IDR_WAVE63, // 10
 };
+
+const int finalPanelHuntJingle = IDR_WAVE92;
+const int finalPanelHuntJingleUnderstated = IDR_WAVE93;
 
 namespace SoLoud {
 	class Soloud;
@@ -123,9 +145,11 @@ private:
 	std::chrono::system_clock::time_point lastEPJinglePlayedTime;
 	APJingle lastPanelJinglePlayed;
 	APJingle lastEPJinglePlayed;
+	int lastPlopIndex = -1;
 	int panelChain;
 	int epChain;
 	int lastEntityHuntIndex = -1;
+	int secondLastEntityHuntIndex = -1;
 
 	SoLoud::Wav* currentlyPlayingSyncSound;
 	int currentlyPlayingSyncHandle = -1;
@@ -143,69 +167,97 @@ private:
 	void PlayAppropriateJingle(APJingle jingle, std::any extraInfo, bool async);
 
 	std::map<APJingle, std::vector<int>> jingleVersions = {
+		{PanelProgUseful, {IDR_WAVE77, IDR_WAVE78, IDR_WAVE79, IDR_WAVE80, IDR_WAVE81}},
 		{PanelFiller, {IDR_WAVE5, IDR_WAVE6, IDR_WAVE22, IDR_WAVE23}},
 		{PanelUseful, {IDR_WAVE15, IDR_WAVE16, IDR_WAVE32, IDR_WAVE33, IDR_WAVE59}},
 		{PanelProgression, {IDR_WAVE8, IDR_WAVE9, IDR_WAVE10, IDR_WAVE28, IDR_WAVE29}},
 		{PanelTrap, {IDR_WAVE12, IDR_WAVE13, IDR_WAVE31}},
 
+		{EPProgUseful, {IDR_WAVE72, IDR_WAVE71}},
 		{EPFiller, {IDR_WAVE1, IDR_WAVE18}},
 		{EPProgression, {IDR_WAVE2, IDR_WAVE19}},
 		{EPTrap, {IDR_WAVE3, IDR_WAVE20}},
 		{EPUseful, {IDR_WAVE4, IDR_WAVE21}},
 
+		{UnderstatedProgUseful, {IDR_WAVE71}},
 		{UnderstatedFiller, {IDR_WAVE1}},
 		{UnderstatedProgression, {IDR_WAVE2}},
 		{UnderstatedTrap, {IDR_WAVE3}},
 		{UnderstatedUseful, {IDR_WAVE4}},
 		{UnderstatedEntityHunt, {IDR_WAVE60}},
 
+		{IncomingProgUseful, {IDR_WAVE73}},
 		{IncomingFiller, {IDR_WAVE24}},
 		{IncomingProgression, {IDR_WAVE25}},
 		{IncomingTrap, {IDR_WAVE26}},
 		{IncomingUseful, {IDR_WAVE27}},
 
+		{DogProgUseful, {IDR_WAVE70}},
 		{DogFiller, {IDR_WAVE35}},
 		{DogProgression, {IDR_WAVE36}},
 		{DogTrap, {IDR_WAVE34}},
 		{DogUseful, {IDR_WAVE37}},
 
+		{EasterFiller, {IDR_WAVE87}},
+		{EasterProgression, {IDR_WAVE88}},
+		{EasterProgUseful, {IDR_WAVE89}},
+		{EasterTrap, {IDR_WAVE90}},
+		{EasterUseful, {IDR_WAVE91}},
+
+		{UnderstatedVictory, {IDR_WAVE69}},
 		{Victory, {IDR_WAVE30}},
 		{FirstJingle, {IDR_WAVE50}},
-		{DeathLink, {IDR_WAVE51}}
+		{Bonk, {IDR_WAVE51}},
+		{Plop, {IDR_WAVE82, IDR_WAVE83, IDR_WAVE84, IDR_WAVE85, IDR_WAVE86}},
 	};
 
 	std::map<APJingle, int> jingleEpicVersions = {
+		{PanelProgUseful, IDR_WAVE65},
 		{PanelFiller, IDR_WAVE7},
 		{PanelUseful, IDR_WAVE17},
 		{PanelProgression, IDR_WAVE11},
 		{PanelTrap, IDR_WAVE14},
 
+		{EPProgUseful, IDR_WAVE71},
 		{EPFiller, IDR_WAVE1},
 		{EPProgression, IDR_WAVE2},
 		{EPTrap, IDR_WAVE3},
 		{EPUseful, IDR_WAVE4},
 
+		{IncomingProgUseful, IDR_WAVE73},
 		{IncomingFiller, IDR_WAVE24},
 		{IncomingProgression, IDR_WAVE25},
 		{IncomingTrap, IDR_WAVE26},
 		{IncomingUseful, IDR_WAVE27},
 
-		{UnderstatedFiller, {IDR_WAVE1}},
-		{UnderstatedProgression, {IDR_WAVE2}},
-		{UnderstatedTrap, {IDR_WAVE3}},
-		{UnderstatedUseful, {IDR_WAVE4}},
+		{UnderstatedProgUseful, IDR_WAVE71},
+		{UnderstatedFiller, IDR_WAVE1},
+		{UnderstatedProgression, IDR_WAVE2},
+		{UnderstatedTrap, IDR_WAVE3},
+		{UnderstatedUseful, IDR_WAVE4},
 
-		{DogFiller, {IDR_WAVE35}},
-		{DogProgression, {IDR_WAVE36}},
-		{DogTrap, {IDR_WAVE34}},
-		{DogUseful, {IDR_WAVE37}},
+		{DogProgUseful, IDR_WAVE70},
+		{DogFiller, IDR_WAVE35},
+		{DogProgression, IDR_WAVE36},
+		{DogTrap, IDR_WAVE34},
+		{DogUseful, IDR_WAVE37},
 
-		{Victory, {IDR_WAVE30}},
-		{FirstJingle, {IDR_WAVE50}},
+		{EasterFiller, IDR_WAVE87},
+		{EasterProgression, IDR_WAVE88},
+		{EasterProgUseful, IDR_WAVE89},
+		{EasterTrap, IDR_WAVE90},
+		{EasterUseful, IDR_WAVE91},
+
+		{UnderstatedVictory, IDR_WAVE69},
+		{Victory, IDR_WAVE30},
+		{FirstJingle, IDR_WAVE50},
+		{Bonk, IDR_WAVE51},
+		{Plop, IDR_WAVE82},
 	};
 
 	std::set<APJingle> epJingles = {
 		EPFiller,
+		EPProgUseful,
 		EPProgression,
 		EPTrap,
 		EPUseful
@@ -214,6 +266,7 @@ private:
 	std::set<APJingle> panelJingles = {
 		PanelFiller,
 		PanelUseful,
+		PanelProgUseful,
 		PanelProgression,
 		PanelTrap
 	};
@@ -221,16 +274,27 @@ private:
 	std::set<APJingle> dogJingles = {
 		DogFiller,
 		DogUseful,
+		DogProgUseful,
 		DogProgression,
 		DogTrap
 	};
 
+	std::set<APJingle> easterJingles = {
+		EasterFiller,
+		EasterUseful,
+		EasterProgUseful,
+		EasterTrap,
+		EasterProgression,
+	};
+
 	std::set<APJingle> understatedJingles = {
 		UnderstatedFiller,
+		UnderstatedProgUseful,
 		UnderstatedProgression,
 		UnderstatedTrap,
 		UnderstatedUseful,
 		UnderstatedEntityHunt,
+		UnderstatedVictory,
 	};
 
 	std::mt19937 rng = std::mt19937(std::chrono::steady_clock::now().time_since_epoch().count());

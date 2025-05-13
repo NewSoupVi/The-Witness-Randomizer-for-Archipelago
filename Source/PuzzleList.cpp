@@ -2830,7 +2830,8 @@ void PuzzleList::GenerateTreehouseV()
 	generator->generate(0x17DD9, Decoration::Star | Decoration::Color::White, 3, Decoration::Star | Decoration::Color::Black, 2, Decoration::Stone | Decoration::Color::White, 2, Decoration::Stone | Decoration::Color::Black, 1, Decoration::Poly | Decoration::Color::White, 2);
 	generator->generate(0x17DB8, Decoration::Star | Decoration::Color::White, 3, Decoration::Star | Decoration::Color::Black, 2, Decoration::Stone | Decoration::Color::White, 2, Decoration::Stone | Decoration::Color::Black, 3, Decoration::Poly | Decoration::Color::White, 1, Decoration::Poly | Decoration::Color::Black, 1);
 	generator->generate(0x17DDC, Decoration::Star | Decoration::Color::White, 2, Decoration::Star | Decoration::Color::Black, 3, Decoration::Stone | Decoration::Color::White, 3, Decoration::Stone | Decoration::Color::Black, 2, Decoration::Poly | Decoration::Color::White, 1, Decoration::Poly | Decoration::Color::Black, 1);
-	generator->generate(0x17DD1, Decoration::Star | Decoration::Color::White, 2, Decoration::Stone | Decoration::Color::Black, 1, Decoration::Star | Decoration::Color::Black, 2, Decoration::Stone | Decoration::Color::White, 1);
+	specialCase->generatePivotPanel(0x17DD1, { 4, 4 }, { { Decoration::Star | Decoration::Color::White, 2 },{ Decoration::Stone | Decoration::Color::Black, 1 },{Decoration::Star | Decoration::Color::Black, 2} , {Decoration::Stone | Decoration::Color::White, 1} }, generator->colorblind);
+
 	//last half orange 1
 	generator->setGridSize(5, 5);
 	generator->generate(0x17DDE, Decoration::Star | Decoration::Color::Black, 8, Decoration::Poly | Decoration::Color::Black, 2);
@@ -2846,7 +2847,7 @@ void PuzzleList::GenerateTreehouseV()
 	generator->generate(0x17DB4, Decoration::Star | Decoration::Color::Orange, 2, Decoration::Star | Decoration::Color::Magenta, 2, Decoration::Stone | Decoration::Color::Orange, 2, Decoration::Stone | Decoration::Color::Magenta, 2);
 	generator->generate(0x17D8C, Decoration::Star | Decoration::Color::Orange, 3, Decoration::Star | Decoration::Color::Magenta, 2, Decoration::Stone | Decoration::Color::Orange, 2, Decoration::Stone | Decoration::Color::Magenta, 2);
 	generator->setGridSize(4, 4);
-	generator->generate(0x17CE3, Decoration::Star | Decoration::Color::Orange, 2, Decoration::Star | Decoration::Color::Magenta, 2, Decoration::Stone | Decoration::Color::Orange, 1, Decoration::Stone | Decoration::Color::Magenta, 1);
+	specialCase->generatePivotPanel(0x17CE3, { 4, 4 }, { {Decoration::Star | Decoration::Color::Orange, 2 },{ Decoration::Star | Decoration::Color::Magenta, 2 },{Decoration::Stone | Decoration::Color::Orange, 1} , {Decoration::Stone | Decoration::Color::Magenta, 1} }, generator->colorblind);
 	generator->generate(0x17DCD, Decoration::Star | Decoration::Color::Orange, 2, Decoration::Star | Decoration::Color::Magenta, 3, Decoration::Stone | Decoration::Color::Orange, 3, Decoration::Stone | Decoration::Color::Magenta, 2);
 	generator->generate(0x17DB2, Decoration::Star | Decoration::Color::Orange, 3, Decoration::Star | Decoration::Color::Magenta, 2, Decoration::Stone | Decoration::Color::Orange, 2, Decoration::Stone | Decoration::Color::Magenta, 3);
 	generator->generate(0x17DCC, Decoration::Star | Decoration::Color::Orange, 3, Decoration::Star | Decoration::Color::Magenta, 2, Decoration::Stone | Decoration::Color::Orange, 2, Decoration::Stone | Decoration::Color::Magenta, 3);
@@ -2854,7 +2855,7 @@ void PuzzleList::GenerateTreehouseV()
 	generator->generate(0x17D8E, Decoration::Star | Decoration::Color::Orange, 2, Decoration::Star | Decoration::Color::Magenta, 2, Decoration::Star | Decoration::Color::Green, 3, Decoration::Stone | Decoration::Color::Orange, 2, Decoration::Stone | Decoration::Color::Magenta, 2, Decoration::Stone | Decoration::Color::Green, 1);
 	generator->setFlagOnce(Generate::Config::FixBackground);
 	generator->setGridSize(4, 4);
-	generator->generate(0x17DB7, Decoration::Star | Decoration::Color::Orange, 4, Decoration::Star | Decoration::Color::Magenta, 4, Decoration::Star | Decoration::Color::Green, 2);
+	specialCase->generatePivotPanel(0x17DB7, { 4, 4 }, { {Decoration::Star | Decoration::Color::Orange, 4}, {Decoration::Star | Decoration::Color::Magenta, 4}, {Decoration::Star | Decoration::Color::Green, 2} }, generator->colorblind);
 	generator->generate(0x17DB1, Decoration::Star | Decoration::Color::Orange, 2, Decoration::Star | Decoration::Color::Magenta, 4, Decoration::Star | Decoration::Color::Green, 2, Decoration::Stone | Decoration::Color::Orange, 3, Decoration::Stone | Decoration::Color::Magenta, 3, Decoration::Stone | Decoration::Color::Green, 2);
 	generator->generate(0x17DA2, Decoration::Star | Decoration::Color::Orange, 2, Decoration::Star | Decoration::Color::Magenta, 3, Decoration::Star | Decoration::Color::Green, 2, Decoration::Stone | Decoration::Color::Orange, 2, Decoration::Stone | Decoration::Color::Magenta, 3, Decoration::Stone | Decoration::Color::Green, 4);
 	//Green Bridge

@@ -117,7 +117,6 @@ Decoration::Color color;
 int currentShape;
 int currentDir;
 int lastSeed;
-int lastPuzzleRandomisation;
 std::vector<long long> shapePos = { SHAPE_11, SHAPE_12, SHAPE_13, SHAPE_14, SHAPE_21, SHAPE_22, SHAPE_23, SHAPE_24, SHAPE_31, SHAPE_32, SHAPE_33, SHAPE_34, SHAPE_41, SHAPE_42, SHAPE_43, SHAPE_44 };
 std::vector<long long> defaultShape = { SHAPE_21, SHAPE_31, SHAPE_32, SHAPE_33 }; //L-shape
 std::vector<long long> directions = { ARROW_UP_RIGHT, ARROW_UP, ARROW_UP_LEFT, ARROW_LEFT, 0, ARROW_RIGHT, ARROW_DOWN_LEFT, ARROW_DOWN, ARROW_DOWN_RIGHT }; //Order of directional check boxes
@@ -170,6 +169,9 @@ void Main::randomize() {
 	ClientWindow* clientWindow = ClientWindow::get();
 	clientWindow->setWindowMode(ClientWindowMode::Disabled);
 
+	clientWindow->logLine("Store settings.");
+	clientWindow->saveSettings();
+
 	clientWindow->logLine("Attempting randomization.");
 
 	Memory* memory = Memory::get();
@@ -197,7 +199,8 @@ void Main::randomize() {
 	randomizer->seedIsRNG = false;
 	apRandomizer->SyncProgress = clientWindow->getSetting(ClientToggleSetting::SyncProgress);
 	apRandomizer->CollectedPuzzlesBehavior = clientWindow->getSetting(ClientDropdownSetting::Collect);
-	apRandomizer->DisabledPuzzlesBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledPuzzles);
+	apRandomizer->DisabledPanelsBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledPanels);
+	apRandomizer->DisabledEPsBehavior = clientWindow->getSetting(ClientDropdownSetting::DisabledEPs);
 	apRandomizer->solveModeSpeedFactor = 0.0f; // THIS VALUE IN THE FUTURE CAN BE USED TO MAKE SPEED BOOSTS TICK DOWN AT A SLOW RATE IN SOLVE MODE RATHER THAN STOP OR GO AT FULL SPEED
 
 	clientWindow->setStatusMessage("Connecting to Archipelago...");
@@ -223,7 +226,6 @@ void Main::randomize() {
 
 			memory->WritePanelData<float>(0x0064, VIDEO_STATUS_COLOR + 8, { 0.0f });
 		}
-		lastPuzzleRandomisation = memory->ReadPanelData<int>(0x00182, VIDEO_STATUS_COLOR + 8);
 	}
 
 	//If the save hasn't been randomized before, make sure it is a fresh, unplayed save file
@@ -236,17 +238,10 @@ void Main::randomize() {
 
 	clientWindow->logLine("Last seed: " + std::to_string(lastSeed));
 
-	if (lastSeed == 0) {
-		memory->WritePanelData<float>(0x0064, VIDEO_STATUS_COLOR + 8, { 0.0f });
-	}
-
 	clientWindow->logLine("Store AP credentials to in-game data.");
 	Special::writeStringToPanels(apAddress, addressPanels);
 	Special::writeStringToPanels(apSlotName, slotNamePanels);
 	Special::writeStringToPanels(apPassword, passwordPanels);
-
-	clientWindow->logLine("Store settings.");
-	clientWindow->saveSettings();
 
 	clientWindow->logLine("Configure base randomizer.");
 	randomizer->seed = seed;
@@ -260,8 +255,14 @@ void Main::randomize() {
 	clientWindow->setStatusMessage("Initialising puzzles...");
 	apRandomizer->InitPanels();
 
-	clientWindow->logLine("Disabling/Enabling color cycle effects.");
-	apRandomizer->DisableColorCycle(!clientWindow->getSetting(ClientToggleSetting::PanelEffects));
+	if (clientWindow->getSetting(ClientToggleSetting::PanelEffects)) {
+		// Could actually make this togglable at any time. Both of the patches are reversible
+		clientWindow->logLine("Disabling/Enabling color cycle effects.");
+		apRandomizer->DisableColorCycle();
+	}
+	else {
+		apRandomizer->PatchColorCycle();
+	}
 
 	clientWindow->setStatusMessage("Restoring vanilla puzzles...");
 	apRandomizer->RestoreOriginals();
@@ -289,11 +290,14 @@ void Main::randomize() {
 		apRandomizer->GenerateVariety();
 
 	memory->WritePanelData(0x00064, VIDEO_STATUS_COLOR + 8, seed);
-	memory->WritePanelData(0x00182, VIDEO_STATUS_COLOR + 8, puzzleRando);
 
 	if (clientWindow->getSetting(ClientToggleSetting::HighContrast)) {
 		clientWindow->logLine("Setting up High Contrast Mode.");
 		apRandomizer->HighContrastMode();
+	}
+	if (clientWindow->getSetting(ClientToggleSetting::ColorblindMode)) {
+		clientWindow->logLine("Making other colorblind adjustments.");
+		apRandomizer->ColorBlindAdjustments();
 	}
 
 	clientWindow->logLine("Start PostGeneration.");
@@ -470,7 +474,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	Memory::create();
 	Globals::create();
 	Memory* memory = memory->get();
-	
+
 	InputWatchdog::initialize();
 
 	//Get the seed and difficulty previously used for this save file (if applicable)
@@ -642,7 +646,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	//ACCEL Accel[] = { { FVIRTKEY, VK_TAB, IDC_TAB}, { FVIRTKEY, VK_RETURN, IDC_RETURN} };
 	//const HACCEL hAccel = CreateAcceleratorTable(Accel, sizeof(Accel) / sizeof(ACCEL));
 
-    MSG msg;
+	MSG msg;
 	ClientWindow* clientWindow = ClientWindow::get();
 	while (GetMessage(&msg, nullptr, 0, 0))
 	{
@@ -651,7 +655,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-    }
+	}
 
-    return (int) msg.wParam;
+	return (int)msg.wParam;
 }

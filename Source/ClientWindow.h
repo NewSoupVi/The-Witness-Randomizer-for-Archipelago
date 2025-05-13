@@ -14,12 +14,13 @@ enum ClientToggleSetting {
 	SyncProgress,
 	HighContrast,
 	PanelEffects,
-	ExtraInfo
+	ExtraInfo,
 };
 
 enum ClientDropdownSetting {
 	Collect,
-	DisabledPuzzles,
+	DisabledPanels,
+	DisabledEPs,
 	Jingles,
 };
 
@@ -167,7 +168,7 @@ private:
 
 	APClient* ap = NULL;
 
-	std::string currentJingles = "Understated";
+	std::string currentJingles = "Minimal";
 };
 
 inline std::ofstream clientLog = std::ofstream("WitnessRandomizerLog.txt");

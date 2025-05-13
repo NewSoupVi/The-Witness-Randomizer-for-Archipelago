@@ -7,6 +7,11 @@
 #include <string>
 #include <vector>
 
+#include <windows.h>
+
+class ApSettings;
+class FixedClientSettings;
+
 class APRandomizer {
 	public:
 		APRandomizer();
@@ -15,7 +20,8 @@ class APRandomizer {
 		int FinalPanel = 0;
 		bool SyncProgress = false;
 		std::string CollectedPuzzlesBehavior = "Unchanged";
-		std::string DisabledPuzzlesBehavior = "Prevent Solve";
+		std::string DisabledPanelsBehavior = "Prevent Solve";
+		std::string DisabledEPsBehavior = "Prevent Solve";
 
 		int PuzzleRandomization = 2;
 		bool UnlockSymbols = false;
@@ -29,7 +35,8 @@ class APRandomizer {
 		int PanelHuntPostgame = 0;
 		bool DeathLink;
 		int DeathLinkAmnesty = 0;
-		bool ElevatorsComeToYou = false;
+		int EggHuntDifficulty = 0;
+		std::set<std::string> ElevatorsComeToYou = {};
 
 		int mostRecentItemId = -1;
 
@@ -40,6 +47,7 @@ class APRandomizer {
 
 		bool Connect(std::string& server, std::string& user, std::string& password);
 		void PreGeneration();
+		void GetOrCreateSaveGame();
 		void PostGeneration();
 
 		void GenerateNormal();
@@ -47,7 +55,11 @@ class APRandomizer {
 		void GenerateHard();
 
 		void HighContrastMode();
-		void DisableColorCycle(bool revert);
+		void AdjustPP4Colors();
+		void ColorBlindAdjustments();
+		void DisableColorCycle();
+
+		void PatchColorCycle();
 
 		void SkipPuzzle();
 
@@ -91,7 +103,12 @@ class APRandomizer {
 
 		void setPuzzleLocks();
 
+		ApSettings GetAPSettings();
+		FixedClientSettings GetFixedClientSettings();
+
 		std::string buildUri(std::string& server);
+
+		GUID savegameGUID;
 };
 
 #define DATAPACKAGE_CACHE "ap_datapackage.json"

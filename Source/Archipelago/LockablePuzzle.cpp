@@ -775,7 +775,7 @@ void LockablePanel::UpdateLock(APState state) {
 
 	if (puzzleIsMissingKey) {
 		text = "locked";
-		backgroundColor = { 0.6f, 0.55f, 0.2f, 1.0f };
+		backgroundColor = { 0.55f, 0.6f, 0.2f, 1.0f };
 		if (puzzleIsMissingSymbols) {
 			backgroundColor = { 0.5f, 0.25f, 0.0f, 1.0f };
 		}
@@ -1034,7 +1034,7 @@ void LockableEP::LockEP(bool disabled, bool recolor, bool disableEndPoint) {
 	int endPoint = EPtoEndPoint.find(id)->second;
 
 	if (startPointID == 0x1AE8 || startPointID == 0x01C0D || startPointID == 0x01DC7 || startPointID == 0x01E12 || startPointID == 0x01E52) { // Pressure Plate 
-		endPoint = memory->ReadPanelData<int>(endPoint, PRESSURE_PLATE_PATTERN_POINT_ID) - 1;
+		endPoint = getSafePressurePlatePatternPointID(endPoint);
 	}
 
 	if (disableEndPoint && endPoint != -1) memory->WritePanelData<int>(endPoint, EP_PATTERN_POINT_IS_ENDPOINT, { 0 });
@@ -1057,6 +1057,20 @@ void LockableEP::LockEP(bool disabled, bool recolor, bool disableEndPoint) {
 	memory->WritePanelData<float>(startPointID, EP_PARTICLE_SIZE_SCALE, 2.0f);
 }
 
+int LockableEP::getSafePressurePlatePatternPointID(int ppID) {
+	auto memory = Memory::get();
+
+	int actualPPID = memory->ReadPanelData<int>(ppID, PRESSURE_PLATE_PATTERN_POINT_ID) - 1;;
+
+	void* offset = memory->ComputeOffset({ memory->GLOBALS, 0x18, actualPPID * 8 }, true);
+	uint64_t pointer = 0;
+	memory->ReadAbsolute(offset, &pointer, sizeof(pointer));
+
+	if (pointer == 0) return -1;
+
+	return memory->ReadPanelData<int>(ppID, PRESSURE_PLATE_PATTERN_POINT_ID) - 1;
+}
+
 void LockableEP::Restore(){
 	auto memory = Memory::get();
 
@@ -1064,7 +1078,7 @@ void LockableEP::Restore(){
 	int startPointID = EPtoStartPoint.find(id)->second;
 	int endPoint = EPtoEndPoint.find(id)->second;
 	if (endPoint == 0x018f4 || endPoint == 0x018DA || endPoint == 0x17DF || endPoint == 0x18E7 || endPoint == 0x1786) { // Pressure Plate 
-		endPoint = memory->ReadPanelData<int>(endPoint, PRESSURE_PLATE_PATTERN_POINT_ID) - 1;
+		endPoint = getSafePressurePlatePatternPointID(endPoint);
 		if (endPoint != -1)	memory->WritePanelData<int>(endPoint, EP_PATTERN_POINT_IS_ENDPOINT, { 1 });
 	}
 	else {

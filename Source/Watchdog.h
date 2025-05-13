@@ -1,5 +1,7 @@
 #pragma once
 
+#include <windows.h>
+
 #include "Memory.h"
 
 class Watchdog
@@ -98,6 +100,7 @@ public:
 	ArrowWatchdog(int id, int pillarWidth);
 
 	virtual void action();
+	bool ensureArrowsStillExist();
 	void initPath();
 	bool checkArrow(int x, int y);
 	bool checkArrowPillar(int x, int y);
