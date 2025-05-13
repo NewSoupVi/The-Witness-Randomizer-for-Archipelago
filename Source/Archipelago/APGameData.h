@@ -2556,7 +2556,6 @@ inline std::map<int, std::pair<Vector3, RgbColor>> easterEggs = {
 	// Stoneworks
 	{ 0xEE022, {{-74.42, 138.859, 4.972}, EGG_MAGENTA * 0.2f}}, // Quarry Stoneworks Crevace Behind Control Room, Exempt-Medic
 	{ 0xEE023, {{-69.412, 133.404, 4.419}, EGG_ORANGE * 0.28f}}, // Quarry Stoneworks Furnace Inside, NewSoupVi
-	{ 0xEE0FF, {{-63.3543, 135.54, 2.024}, EGG_YELLOW * 0.14f}}, // The meanest egg to ever exist, Rever
 
 	// Shadows
 	{ 0xEE024, {{-9.02006, 88.7752, 13.46}, EGG_CYAN * 6.0f}}, // Near Butterfly Tree, Exempt-Medic
@@ -2743,6 +2742,9 @@ inline std::map<int, std::pair<Vector3, RgbColor>> easterEggs = {
 	// Boat
 	{ 0xEE076, {{-170.391, 32.1132, 0.0269997}, EGG_ORANGE * 4.0f}}, // Glass Factory Optional Path, NewSoupVi
 	{ 0xEE077, {{164.824, 181.399, 0.653992}, EGG_GREEN * 7.0f}}, // Treehouse Optional Path, NewSoupVi
+
+	// Secret
+	{ 0xEE0FF, {{-63.3543, 135.54, 2.024}, EGG_YELLOW * 0.14f}}, // The meanest egg to ever exist, Rever
 };
 
 RgbColor getColorByItemIdOrFlag(const __int64 itemId, const __int64 flags);
