@@ -2027,7 +2027,30 @@ void APWatchdog::CheckAudioLogHints() {
 		if (audioLogHasBeenPlayed || logPlaying) {
 			if (inGameHints.contains(audioLog)) {
 				int64_t locationId = inGameHints[audioLog].locationID;
-				if (locationId != -1 && inGameHints[audioLog].playerNo == pNO && inGameHints[audioLog].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({ locationId }, 2);
+				if (locationId != -1 && inGameHints[audioLog].allowScout) {
+					int target_player = inGameHints[audioLog].playerNo;
+					if (target_player == pNO) {
+						if (!checkedLocations.count(locationId)) {
+							if (ap->get_server_version() < APClient::Version(0, 6, 3))
+							{
+								ap->LocationScouts({ locationId }, 2);
+							}
+							else
+							{
+								ap->CreateHints({ locationId }, target_player);
+							}
+						}
+					}
+					else
+					{
+						if (ap->get_server_version() >= APClient::Version(0, 6, 3))
+						{
+							if (!locationsThatContainedItemsFromOtherPlayers.contains({ target_player, locationId })) {
+								ap->CreateHints({ locationId }, target_player);
+							}
+						}
+					}
+				}
 			}
 
 			std::string log_str = Utilities::entityStringRepresentation(audioLog);
@@ -2065,7 +2088,30 @@ void APWatchdog::CheckLaserHints() {
 		if (laserHasBeenSeen) {
 			if (inGameHints.contains(laserID)) {
 				int64_t locationId = inGameHints[laserID].locationID;
-				if (locationId != -1 && inGameHints[laserID].playerNo == pNO && inGameHints[laserID].allowScout && !checkedLocations.count(locationId)) ap->LocationScouts({ locationId }, 2);
+				if (locationId != -1 && inGameHints[laserID].allowScout) {
+					int target_player = inGameHints[laserID].playerNo;
+					if (target_player == pNO) {
+						if (!checkedLocations.count(locationId)) {
+							if (ap->get_server_version() < APClient::Version(0, 6, 3))
+							{
+								ap->LocationScouts({ locationId }, 2);
+							}
+							else
+							{
+								ap->CreateHints({ locationId }, target_player);
+							}
+						}
+					}
+					else
+					{
+						if (ap->get_server_version() >= APClient::Version(0, 6, 3))
+						{
+							if (!locationsThatContainedItemsFromOtherPlayers.contains({ target_player, locationId })) {
+								ap->CreateHints({ locationId }, target_player);
+							}
+						}
+					}
+				}
 			}
 
 			std::string log_str = Utilities::entityStringRepresentation(laserID);
