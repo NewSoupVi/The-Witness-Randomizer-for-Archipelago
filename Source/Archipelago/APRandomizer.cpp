@@ -813,6 +813,7 @@ void APRandomizer::HighContrastMode() {
 		memory->WritePanelData<float>(id, BACKGROUND_REGION_COLOR, swampRedInner);
 		memory->WritePanelData<float>(id, PATH_COLOR, pathColor);
 		memory->WritePanelData<float>(id, ACTIVE_COLOR, activeColor);
+		memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
 	}
 
 	for (int i = 0; i < 3; i++) {
@@ -826,6 +827,7 @@ void APRandomizer::HighContrastMode() {
 		memory->WritePanelData<float>(id, BACKGROUND_REGION_COLOR, swampRedInner);
 		memory->WritePanelData<float>(id, PATH_COLOR, pathColor);
 		memory->WritePanelData<float>(id, ACTIVE_COLOR, activeColor);
+		memory->WritePanelData<int>(id, NEEDS_REDRAW, { 1 });
 	}
 
 	AdjustPP4Colors();
