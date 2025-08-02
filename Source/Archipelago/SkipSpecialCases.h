@@ -188,6 +188,8 @@ inline const std::set<int> skip_completelyExclude = {
 	// Doesn't seem to work at all
 	0x0C335, // Tutorial Pillar
 
+	// Challenge Timer Start
+	0x0A332,
 	0x00C09, // Challenge Maze Panel
 	0x00CDB, 0x0051F, 0x00524, 0x00CD4, // Challenge reallocating
 };
