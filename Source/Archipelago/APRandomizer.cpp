@@ -46,7 +46,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	ap->set_room_info_handler([&]() {
 		const int item_handling_flags_all = 7;
 
-		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 6, 0});
+		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 6, 3});
 	});
 
 	ap->set_location_checked_handler([&](const std::list<int64_t>& locations) {
@@ -123,6 +123,8 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		DeathLink = slotData.contains("death_link") ? slotData["death_link"] == true : false;
 		DeathLinkAmnesty = slotData.contains("death_link_amnesty") ? (int) slotData["death_link_amnesty"] : 0;
 		if (!DeathLink) DeathLinkAmnesty = -1;
+
+		VagueHintsLegacy = slotData.contains("vague_hints") ? (int)slotData["vague_hints"] != 0 : false;
 
 		if (slotData["elevators_come_to_you"].is_array()) {
 			for (std::string key : slotData["elevators_come_to_you"]) {
@@ -302,8 +304,8 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 						else {
 							player_no = integer;
 
-							if (player_no == -1 && location_id != -1) {
-								player_no = ap->get_player_number();
+							if (player_no < 0 && location_id != -1) {  // vague hint
+								player_no = -player_no;
 								allowScout = false;
 							}
 						}
@@ -900,6 +902,7 @@ ApSettings APRandomizer::GetAPSettings() {
 	apSettings.DeathLinkAmnesty = DeathLinkAmnesty;
 	apSettings.EggHuntStep = EggHuntStep;
 	apSettings.EggHuntDifficulty = EggHuntDifficulty;
+	apSettings.VagueHintsLegacy = VagueHintsLegacy;
 	return apSettings;
 }
 
