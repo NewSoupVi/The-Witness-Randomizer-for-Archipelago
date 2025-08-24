@@ -36,6 +36,7 @@ public:
 	int DeathLinkAmnesty;
 	int EggHuntStep;
 	int EggHuntDifficulty;
+	bool VagueHintsLegacy;
 };
 
 class FixedClientSettings {
@@ -198,6 +199,8 @@ private:
 	int EggHuntDifficulty = 0;
 	int HighestRealEggCheck = 0; // Not excluded
 	int HighestEggCheck = 0;
+
+	bool AllHintsAreVagueHintsLegacy = false;
 
 	int doneKhatzEffects = 0;
 

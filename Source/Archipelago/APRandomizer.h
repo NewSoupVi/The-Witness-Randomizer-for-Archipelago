@@ -36,6 +36,7 @@ class APRandomizer {
 		bool DeathLink;
 		int DeathLinkAmnesty = 0;
 		int EggHuntDifficulty = 0;
+		bool VagueHintsLegacy = false;
 		std::set<std::string> ElevatorsComeToYou = {};
 
 		int mostRecentItemId = -1;
@@ -47,7 +48,6 @@ class APRandomizer {
 
 		bool Connect(std::string& server, std::string& user, std::string& password);
 		void PreGeneration();
-		void GetOrCreateSaveGame();
 		void PostGeneration();
 
 		void GenerateNormal();

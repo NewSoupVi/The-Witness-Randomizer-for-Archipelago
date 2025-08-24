@@ -62,6 +62,7 @@ APWatchdog::APWatchdog(APClient* client, PanelLocker* panelLocker, APState* stat
 	SyncProgress = fixedClientSettings->SyncProgress;
 	EggHuntStep = apSettings->EggHuntStep;
 	EggHuntDifficulty = apSettings->EggHuntDifficulty;
+	AllHintsAreVagueHintsLegacy = apSettings->VagueHintsLegacy;
 	
 	for (int huntEntity : apSettings->huntEntites) {
 		huntEntityToSolveStatus[huntEntity] = false;
@@ -1908,7 +1909,7 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 			}
 
 			if (audioLogHint.playerNo == ap->get_player_number() && locationIdToItemFlags.count(audioLogHint.locationID)) {
-				if (checkedLocations.count(audioLogHint.locationID) || (!(locationIdToItemFlags[audioLogHint.locationID] & APClient::ItemFlags::FLAG_ADVANCEMENT) && audioLogHint.allowScout)) {
+				if (checkedLocations.count(audioLogHint.locationID) || (!(locationIdToItemFlags[audioLogHint.locationID] & APClient::ItemFlags::FLAG_ADVANCEMENT) && audioLogHint.allowScout && !AllHintsAreVagueHintsLegacy)) {
 					std::string name = ap->get_location_name(audioLogHint.locationID, "The Witness");
 					if (locationIdToItemFlags[audioLogHint.locationID] & APClient::ItemFlags::FLAG_NEVER_EXCLUDE && !(locationIdToItemFlags[audioLogHint.locationID] & APClient::ItemFlags::FLAG_ADVANCEMENT)) {
 						name += " (Useful)";
@@ -2010,13 +2011,13 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 void APWatchdog::CheckAudioLogHints() {
 	int pNO = ap->get_player_number();
 
-	std::list<APClient::DataStorageOperation> ops = {};
-
 	if (!firstStorageCheckDone) {
 		ap->SetNotify({ "WitnessActivatedAudioLogs" + std::to_string(pNO) });
-		ops.push_back({ "default", nlohmann::json::object() });
+		ap->Set("WitnessActivatedAudioLogs" + std::to_string(pNO), nlohmann::json::object(), true, { { "default", nlohmann::json::object() } });
+		return;
 	}
 
+	if (!firstDataStoreResponse) return;
 	std::map<std::string, bool> newlyActivatedAudioLogs = {};
 
 	for (int audioLog : audioLogs) {
@@ -2027,7 +2028,7 @@ void APWatchdog::CheckAudioLogHints() {
 		if (audioLogHasBeenPlayed || logPlaying) {
 			if (inGameHints.contains(audioLog)) {
 				int64_t locationId = inGameHints[audioLog].locationID;
-				if (locationId != -1 && inGameHints[audioLog].allowScout) {
+				if (locationId != -1 && inGameHints[audioLog].allowScout && !AllHintsAreVagueHintsLegacy) {
 					int target_player = inGameHints[audioLog].playerNo;
 					if (target_player == pNO) {
 						if (!checkedLocations.count(locationId)) {
@@ -2061,11 +2062,7 @@ void APWatchdog::CheckAudioLogHints() {
 	}
 
 	if (newlyActivatedAudioLogs.size()) {
-		ops.push_back({ "update" , newlyActivatedAudioLogs });
-	}
-
-	if (!ops.empty()) {
-		ap->Set("WitnessActivatedAudioLogs" + std::to_string(pNO), nlohmann::json::object(), false, ops);
+		ap->Set("WitnessActivatedAudioLogs" + std::to_string(pNO), nlohmann::json::object(), false, { { "update" , newlyActivatedAudioLogs } });
 	}
 }
 
@@ -2088,7 +2085,7 @@ void APWatchdog::CheckLaserHints() {
 		if (laserHasBeenSeen) {
 			if (inGameHints.contains(laserID)) {
 				int64_t locationId = inGameHints[laserID].locationID;
-				if (locationId != -1 && inGameHints[laserID].allowScout) {
+				if (locationId != -1 && inGameHints[laserID].allowScout && !AllHintsAreVagueHintsLegacy) {
 					int target_player = inGameHints[laserID].playerNo;
 					if (target_player == pNO) {
 						if (!checkedLocations.count(locationId)) {
