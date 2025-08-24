@@ -2011,11 +2011,11 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 void APWatchdog::CheckAudioLogHints() {
 	int pNO = ap->get_player_number();
 
-	if (!firstStorageCheckDone) {
+	/* if (!firstStorageCheckDone) {
 		ap->SetNotify({ "WitnessActivatedAudioLogs" + std::to_string(pNO) });
 		ap->Set("WitnessActivatedAudioLogs" + std::to_string(pNO), nlohmann::json::object(), true, { { "default", nlohmann::json::object() } });
 		return;
-	}
+	} */
 
 	if (!firstDataStoreResponse) return;
 	std::map<std::string, bool> newlyActivatedAudioLogs = {};

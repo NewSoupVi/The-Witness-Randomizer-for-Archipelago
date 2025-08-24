@@ -124,8 +124,9 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		DeathLinkAmnesty = slotData.contains("death_link_amnesty") ? (int) slotData["death_link_amnesty"] : 0;
 		if (!DeathLink) DeathLinkAmnesty = -1;
 
-		VagueHintsLegacy = slotData.contains("vague_hints") ? (int)slotData["vague_hints"] != 0 : false;
-
+		if (ap->get_server_version() < APClient::Version(0, 6, 4)) {
+			VagueHintsLegacy = slotData.contains("vague_hints") ? (int)slotData["vague_hints"] != 0 : false;
+		}
 		if (slotData["elevators_come_to_you"].is_array()) {
 			for (std::string key : slotData["elevators_come_to_you"]) {
 				ElevatorsComeToYou.insert(key);
