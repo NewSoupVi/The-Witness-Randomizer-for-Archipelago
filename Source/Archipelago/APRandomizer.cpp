@@ -36,6 +36,8 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	if (ap) ap->reset();
 	std::wstring uuid = Utilities::GetUUID();
 	ap = new APClient(Utilities::wstring_to_utf8(uuid), "The Witness", uri);
+	
+	ap->set_receive_own_locations(true);
 
 	ClientWindow::get()->passAPClient(ap);
 
