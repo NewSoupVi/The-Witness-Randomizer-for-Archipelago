@@ -584,20 +584,6 @@ void APWatchdog::SkipPanel(int id, std::string reason, bool kickOut, int cost, b
 
 	// Knock-on skip effects
 	if (allowRecursion) {
-		if (reason == "Skipped" && skipTogether.find(id) != skipTogether.end()) {
-			std::vector<int> otherPanels = skipTogether.find(id)->second;
-
-			for (auto it = otherPanels.rbegin(); it != otherPanels.rend(); ++it)
-			{
-				int panel = *it;
-
-				if (panel == id) continue; // Let's not make infinite recursion by accident
-				if (ReadPanelData<int>(panel, SOLVED)) continue;
-
-				SkipPanel(panel, reason, false, 0, false);
-			}
-		}
-
 		if (reason == "Collected" || reason == "Excluded") { // Should this be for "disabled" too?
 			if (collectTogether.find(id) != collectTogether.end()) {
 				std::vector<int> otherPanels = collectTogether.find(id)->second;
@@ -614,6 +600,41 @@ void APWatchdog::SkipPanel(int id, std::string reason, bool kickOut, int cost, b
 
 					SkipPanel(panel, reason, false, 0); // Allowing recursion is fine here for now
 				}
+			}
+		}
+
+		if (skipTogether.find(id) != skipTogether.end()) {
+			std::vector<int> otherPanels = skipTogether.find(id)->second;
+
+			bool associatedPanelsAreAlsoSkipped = true;
+			for (auto otherPanel : otherPanels) {
+				if (!HeldDoubleSkips.contains(otherPanel) && !IsPanelSolved(otherPanel, false)) {
+					associatedPanelsAreAlsoSkipped = false;
+					break;
+				}
+			}
+
+			if (reason == "Skipped" || associatedPanelsAreAlsoSkipped) {
+				HeldDoubleSkips.erase(id);
+				recolorWhenSolved.erase(id);
+
+				for (auto it = otherPanels.rbegin(); it != otherPanels.rend(); ++it)
+				{
+					int panel = *it;
+
+					if (panel == id) continue; // Let's not make infinite recursion by accident
+					if (ReadPanelData<int>(panel, SOLVED)) continue;
+
+					HeldDoubleSkips.erase(id);
+					recolorWhenSolved.erase(id);
+
+					SkipPanel(panel, reason, false, 0, false);
+				}
+			}
+			else {
+				HeldDoubleSkips.insert(id);
+				recolorWhenSolved.insert(id);
+				return;
 			}
 		}
 	}
