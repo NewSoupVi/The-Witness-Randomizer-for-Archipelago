@@ -11,5 +11,5 @@ public:
 	static void create();
 	static Globals* get();
 
-	bool independentSecondStageSymbols = false;
+	std::set<std::string> independentSecondStageSymbols = {};
 };
