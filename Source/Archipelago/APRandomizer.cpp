@@ -182,12 +182,25 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 
 		clientWindow->logLine("Connect: Getting panelhex to id.");
-		for (auto& [key, val] : slotData["panelhex_to_id"].items()) {
-			int panelId = std::stoul(key, nullptr, 16);
-			int locationId = val;
+		if (slotData.contains("panelhex_to_id")) {
+			for (auto& [key, val] : slotData["panelhex_to_id"].items()) {
+				int panelId = std::stoul(key, nullptr, 16);
+				int locationId = val;
 
-			panelIdToLocationId.insert({ panelId, locationId });
-			panelIdToLocationIdReverse.insert({ locationId, panelId });
+				panelIdToLocationId.insert({ panelId, locationId });
+				panelIdToLocationIdReverse.insert({ locationId, panelId });
+			}
+		}
+		else {
+			clientWindow->logLine("Connect: New seed! Building dummy panelhex to id instead.");
+			for (int64_t locationId : ap->get_checked_locations()) {
+				panelIdToLocationId.insert({ locationId, locationId });
+				panelIdToLocationIdReverse.insert({ locationId, locationId });
+			}
+			for (int64_t locationId : ap->get_missing_locations()) {
+				panelIdToLocationId.insert({ locationId, locationId });
+				panelIdToLocationIdReverse.insert({ locationId, locationId });
+			}
 		}
 
 		clientWindow->logLine("Connect: Getting Precompleted Puzzles.");
