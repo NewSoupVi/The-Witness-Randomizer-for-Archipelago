@@ -1,5 +1,8 @@
 #pragma once
 
+#include <set>
+#include <string>
+
 class Globals {
 private:
 
