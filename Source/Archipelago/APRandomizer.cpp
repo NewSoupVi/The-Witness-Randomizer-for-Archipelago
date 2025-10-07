@@ -94,7 +94,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		PuzzleRandomization = slotData.contains("puzzle_randomization") ? (int) slotData["puzzle_randomization"] : 0;
 		UnlockSymbols = slotData.contains("shuffle_symbols") ? slotData["shuffle_symbols"] == true : true;
 		EarlyUTM = slotData.contains("early_secret_area") ? slotData["early_secret_area"] == true : false;
-		Globals::get()->independentSecondStageSymbols = slotData.contains("second_stage_symbols_act_independently") ? slotData["second_stage_symbols_act_independently"] == true : false;
+	
 		if (slotData.contains("mountain_lasers")) MountainLasers = slotData["mountain_lasers"];
 		if (slotData.contains("challenge_lasers")) ChallengeLasers = slotData["challenge_lasers"];
 		bool unlockableWarpsIsOn = slotData.contains("unlockable_warps") ? slotData["unlockable_warps"] == true : false;
@@ -115,6 +115,12 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		};
 		if (!unlockableWarpsIsOn) {
 			UnlockableWarps = {};
+		}
+
+		if (slotData.contains("second_stage_symbols_act_independently")) {
+			for (std::string symbol : slotData["second_stage_symbols_act_independently"]) {
+				Globals::get()->independentSecondStageSymbols.insert(symbol);
+			}
 		}
 
 		if (slotData.contains("easter_egg_hunt")) EggHuntDifficulty = slotData["easter_egg_hunt"];
