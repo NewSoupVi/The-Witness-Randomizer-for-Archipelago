@@ -377,6 +377,7 @@ private:
 	std::map<int, bool> EPStates;
 
 	std::set<int> PuzzlesSkippedThisGame = {};
+	std::set<int> HeldDoubleSkips = {};
 
 	int currentHintEntity = -1;
 	int lastRealHintEntity = -1;

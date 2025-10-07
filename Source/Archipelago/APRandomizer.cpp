@@ -37,6 +37,8 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	if (ap) ap->reset();
 	std::wstring uuid = Utilities::GetUUID();
 	ap = new APClient(Utilities::wstring_to_utf8(uuid), "The Witness", uri);
+	
+	ap->set_receive_own_locations(true);
 
 	ClientWindow::get()->passAPClient(ap);
 
@@ -47,7 +49,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 	ap->set_room_info_handler([&]() {
 		const int item_handling_flags_all = 7;
 
-		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 6, 3});
+		ap->ConnectSlot(user, password, item_handling_flags_all, {}, {0, 6, 4});
 	});
 
 	ap->set_location_checked_handler([&](const std::list<int64_t>& locations) {
@@ -126,7 +128,9 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		DeathLinkAmnesty = slotData.contains("death_link_amnesty") ? (int) slotData["death_link_amnesty"] : 0;
 		if (!DeathLink) DeathLinkAmnesty = -1;
 
-		VagueHintsLegacy = slotData.contains("vague_hints") ? (int)slotData["vague_hints"] != 0 : false;
+		if (ap->get_server_version() < APClient::Version(0, 6, 4)) {
+			VagueHintsLegacy = slotData.contains("vague_hints") ? (int)slotData["vague_hints"] != 0 : false;
+		}
 
 		if (slotData["elevators_come_to_you"].is_array()) {
 			for (std::string key : slotData["elevators_come_to_you"]) {
