@@ -1951,17 +1951,20 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 
 			std::set<int64_t> associatedChecks = {};
 
-			for (int64_t locationID : areaNameToLocationIDs[audioLogHint.areaHint]) {
-				if (locationIdToItemFlags.count(locationID)) {
-					associatedChecks.insert(locationID);
+			for (int64_t entityID : areaNameToEntityIDs[audioLogHint.areaHint]) {
+				if (panelIdToLocationId_READ_ONLY.contains(entityID)) {
+					int64_t locationID = panelIdToLocationId_READ_ONLY[entityID];
+					if (locationIdToItemFlags.count(locationID)) {
+						associatedChecks.insert(locationID);
 
-					if (checkedLocations.count(locationID)) {
-						if (locationIdToItemFlags[locationID] & APClient::ItemFlags::FLAG_ADVANCEMENT) {
-							foundProgression += 1;
+						if (checkedLocations.count(locationID)) {
+							if (locationIdToItemFlags[locationID] & APClient::ItemFlags::FLAG_ADVANCEMENT) {
+								foundProgression += 1;
+							}
 						}
-					}
-					else {
-						unchecked += 1;
+						else {
+							unchecked += 1;
+						}
 					}
 				}
 			}
