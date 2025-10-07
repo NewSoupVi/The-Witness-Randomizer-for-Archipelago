@@ -665,7 +665,6 @@ void LockablePanel::Read() {
 
 	if (pointsToConsider && ((float)dotAmount / (float)pointsToConsider >= 0.9)) {
 		hasFullDots = true;
-		hasDots = false;
 	}
 
 	else if (id == 0x00A52 || id == 0x00A61 || id == 0x00A57 || id == 0x00A64 || id == 0x00A5B || id == 0x00A68) // These dots seem to get picked up as normal dots, not colored ones.
