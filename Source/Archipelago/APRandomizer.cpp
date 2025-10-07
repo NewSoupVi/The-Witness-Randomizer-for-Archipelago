@@ -228,13 +228,18 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 
 		clientWindow->logLine("Connect: Getting item id to door hexes.");
+		nlohmann::json item_id_to_door_ids = {};
 		if (slotData.contains("item_id_to_door_hexes")) {
-			for (auto& [key, val] : slotData["item_id_to_door_hexes"].items()) {
-				int itemId = std::stoul(key, nullptr, 10);
-				std::set<int> v = val;
+			item_id_to_door_ids = slotData["item_id_to_door_hexes"];
+		}
+		if (slotData.contains("item_id_to_door_ids")) {
+			item_id_to_door_ids = slotData["item_id_to_door_ids"];
+		}
+		for (auto& [key, val] : item_id_to_door_ids.items()) {
+			int itemId = std::stoul(key, nullptr, 10);
+			std::set<int> v = val;
 
-				itemIdToDoorSet.insert({ itemId, v });
-			}
+			itemIdToDoorSet.insert({ itemId, v });
 		}
 
 		clientWindow->logLine("Connect: Getting Obelisk Side to EPs.");
