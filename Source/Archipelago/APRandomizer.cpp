@@ -20,6 +20,7 @@
 #include "../Utilities.h"
 #include "SkipSpecialCases.h"
 #include "APAudioPlayer.h"
+#include "../Globals.h"
 
 APRandomizer::APRandomizer() {
 	panelLocker = new PanelLocker();
@@ -93,6 +94,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		PuzzleRandomization = slotData.contains("puzzle_randomization") ? (int) slotData["puzzle_randomization"] : 0;
 		UnlockSymbols = slotData.contains("shuffle_symbols") ? slotData["shuffle_symbols"] == true : true;
 		EarlyUTM = slotData.contains("early_secret_area") ? slotData["early_secret_area"] == true : false;
+	
 		if (slotData.contains("mountain_lasers")) MountainLasers = slotData["mountain_lasers"];
 		if (slotData.contains("challenge_lasers")) ChallengeLasers = slotData["challenge_lasers"];
 		bool unlockableWarpsIsOn = slotData.contains("unlockable_warps") ? slotData["unlockable_warps"] == true : false;
@@ -115,6 +117,12 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 			UnlockableWarps = {};
 		}
 
+		if (slotData.contains("second_stage_symbols_act_independently")) {
+			for (std::string symbol : slotData["second_stage_symbols_act_independently"]) {
+				Globals::get()->independentSecondStageSymbols.insert(symbol);
+			}
+		}
+
 		if (slotData.contains("easter_egg_hunt")) EggHuntDifficulty = slotData["easter_egg_hunt"];
 
 		if (slotData.contains("panel_hunt_required_absolute")) RequiredHuntEntities = slotData["panel_hunt_required_absolute"];
@@ -129,6 +137,7 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		if (ap->get_server_version() < APClient::Version(0, 6, 5)) {
 			VagueHintsLegacy = slotData.contains("vague_hints") ? (int)slotData["vague_hints"] != 0 : false;
 		}
+
 		if (slotData["elevators_come_to_you"].is_array()) {
 			for (std::string key : slotData["elevators_come_to_you"]) {
 				ElevatorsComeToYou.insert(key);

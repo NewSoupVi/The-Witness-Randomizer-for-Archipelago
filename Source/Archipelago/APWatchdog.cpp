@@ -4099,6 +4099,7 @@ void APWatchdog::HandleReceivedItems() {
 void APWatchdog::unlockItem(int item) {
 	switch (item) {
 	case ITEM_DOTS:									state->unlockedDots = true;							break;
+	case ITEM_SPARSE_DOTS:									state->unlockedDots = true;							break;
 	case ITEM_COLORED_DOTS:							state->unlockedColoredDots = true;				break;
 	case ITEM_FULL_DOTS:									state->unlockedFullDots = true;							break;
 	case ITEM_SOUND_DOTS:							state->unlockedSoundDots = true;					break;
@@ -4109,6 +4110,7 @@ void APWatchdog::unlockItem(int item) {
 	case ITEM_TETRIS_ROTATED:						state->unlockedTetrisRotated = true;				break;
 	case ITEM_TETRIS_NEGATIVE:						state->unlockedTetrisNegative = true;			break;
 	case ITEM_STARS:									state->unlockedStars = true;						break;
+	case ITEM_SIMPLE_STARS:									state->unlockedStars = true;							break;
 	case ITEM_STARS_WITH_OTHER_SYMBOL:			state->unlockedStarsWithOtherSimbol = true;	break;
 	case ITEM_B_W_SQUARES:							state->unlockedStones = true;						break;
 	case ITEM_COLORED_SQUARES:						state->unlockedColoredStones = true;				break;
