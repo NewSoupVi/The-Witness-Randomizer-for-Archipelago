@@ -362,11 +362,21 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 						}
 						else {
 							player_no = integer;
+
+							if (player_no < 0 && location_id != -1) {  // vague hint
+								player_no = -player_no;
+								allowScout = false;
+							}
 						}
 					}
 					else {
 						std::string line = token;
-						if (line.rfind("containing_area:", 0) == 0) {
+						if (line.rfind("hinted_area:", 0) == 0) {
+							area = line.substr(12);
+							player_no = ap->get_player_number();
+							extraInfoFound = true;
+						}
+						else if (line.rfind("containing_area:", 0) == 0) {
 							area = line.substr(16);
 							allowScout = false;
 						}
