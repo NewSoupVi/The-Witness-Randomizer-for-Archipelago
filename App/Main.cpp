@@ -466,8 +466,6 @@ void Main::loadCredentials() {
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 
 {
-	LoadLibrary(L"Msftedit.dll");
-
 	ClientWindow::create(hInstance, nCmdShow);
 
 	//Initialize memory globals constant depending on game version
