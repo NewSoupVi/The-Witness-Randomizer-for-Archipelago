@@ -3,7 +3,7 @@
 const std::string& GetCreditsHint() {
   static const std::string creditsHint = "This Randomizer is brought to you by\n"
     "NewSoupVi, Jarno, blastron, Quas NaArt,\n"
-    "jbzdarkid, sigma144, IHNN, oddGarrett, Exempt-Medic, hatkirby.";
+    "jbzdarkid, sigma144, IHNN, oddGarrett, Exempt-Medic, hatkirby, Sophira.";
   return creditsHint;
 }
 
