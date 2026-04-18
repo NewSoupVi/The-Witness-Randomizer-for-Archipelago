@@ -565,7 +565,7 @@ void ClientWindow::addArchipelagoCredentials(int& currentY) {
 		STATIC_TEXT_MARGIN, currentY + SETTING_LABEL_Y_OFFSET,
 		SETTING_LABEL_WIDTH, STATIC_TEXT_HEIGHT,
 		hwndRootWindow, NULL, hAppInstance, NULL);
-	HWND hwndApAddress = CreateWindow(MSFTEDIT_CLASS, L"",
+	HWND hwndApAddress = CreateWindow(L"EDIT", L"",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER,
 		SETTING_CONTROL_LEFT, currentY,
 		SETTING_CONTROL_WIDTH, CONTROL_HEIGHT,
@@ -581,7 +581,7 @@ void ClientWindow::addArchipelagoCredentials(int& currentY) {
 		STATIC_TEXT_MARGIN, currentY + SETTING_LABEL_Y_OFFSET,
 		SETTING_LABEL_WIDTH, STATIC_TEXT_HEIGHT,
 		hwndRootWindow, NULL, hAppInstance, NULL);
-	HWND hwndApSlotName = CreateWindow(MSFTEDIT_CLASS, L"",
+	HWND hwndApSlotName = CreateWindow(L"EDIT", L"",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER,
 		SETTING_CONTROL_LEFT, currentY,
 		SETTING_CONTROL_WIDTH, CONTROL_HEIGHT,
@@ -597,7 +597,7 @@ void ClientWindow::addArchipelagoCredentials(int& currentY) {
 		STATIC_TEXT_MARGIN, currentY + SETTING_LABEL_Y_OFFSET,
 		SETTING_LABEL_WIDTH, STATIC_TEXT_HEIGHT,
 		hwndRootWindow, NULL, hAppInstance, NULL);
-	HWND hwndApPassword = CreateWindow(MSFTEDIT_CLASS, L"",
+	HWND hwndApPassword = CreateWindow(L"EDIT", L"",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER,
 		SETTING_CONTROL_LEFT, currentY,
 		SETTING_CONTROL_WIDTH, CONTROL_HEIGHT,
