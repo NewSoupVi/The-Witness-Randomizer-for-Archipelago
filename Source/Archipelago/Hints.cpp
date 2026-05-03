@@ -11,6 +11,7 @@ const std::string& GetCreditsHint() {
 const std::vector<std::string>& GetJokeHints(const ApSettings& apSettings) {
   static std::vector<std::string> jokeHints = {
     "Have you tried Adventure?\n...Holy crud, that game is 17 years older than me.",
+    "Have you tried APQuest?\nYou don't have to or anything... It's not even that good anyway...\nuuuuu,,,,,,,,,",
     u8"Have you tried Aquaria?\nAdmittedly, singing is a much cooler interaction mechanic than \"drawing lines on stuff\"™.",
     "Have you tried A Hat in Time?\nThere's an actual metro in that game, not just one on the tracker.",
     "Have you tried A Link to the Past?\nThe Archipelago game that started it all!",
@@ -22,6 +23,7 @@ const std::vector<std::string>& GetJokeHints(const ApSettings& apSettings) {
     "Have you tried Castlevania: Circle of the Moon?\nHas anyone tried telling Konami that the moon isn't a circle most of the time?",
     "Have you tried Castlevania: Circle of the Moon?\nIt's that one Castlevania game where they made the moon the wrong shape.",
     "Have you tried Celeste 64?\nYou need smol low-poly Madeline in your life. TRUST ME.",
+    u8"Have you tried Celeste?\nI'll go buy your Blåhaj in the meantime.\nTrust me, you'll want one after.",
     "Have you tried ChecksFinder?\nIf you like puzzles, you might enjoy it!",
     "Have you tried Choo-Choo Charles? I'd tell you what it's about, but I've lost my train of thought...",
     "Have you tried Clique?\nIt's certainly a lot less complicated than this game!",
