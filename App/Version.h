@@ -7,7 +7,7 @@
 #define MINOR 1
 #define PATCH 0
 
-#define VERSION_STR     "9.1.0 Beta 2"
+#define VERSION_STR     "9.1.0"
 #define VERSION			MAJOR, MINOR, PATCH
 
 #define AP_VERSION_STR	"0.6.8"
