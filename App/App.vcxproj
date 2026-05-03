@@ -211,7 +211,7 @@
     <Media Include="..\Music\Pillars Useful Bmaj.ogg" />
     <Media Include="..\Music\Pillars Useful EbMin.ogg" />
     <Media Include="..\Music\Pillars Useful Emaj.ogg" />
-	<Media Include="..\Music\Pillars ProgUseful Bmaj.ogg" />
+    <Media Include="..\Music\Pillars ProgUseful Bmaj.ogg" />
     <Media Include="..\Music\Pillars ProgUseful EbMin.ogg" />
     <Media Include="..\Music\Pillars ProgUseful Emaj.ogg" />
     <Media Include="..\Music\Bonk.ogg" />
@@ -259,7 +259,7 @@
     <Media Include="..\Music\Panel Hunt 9.ogg" />
     <Media Include="..\Music\Panel Hunt 10.ogg" />
     <Media Include="..\Music\Panel Hunt 11.ogg" />
-	<Media Include="..\Music\Panel Hunt Final.ogg" />
+    <Media Include="..\Music\Panel Hunt Final.ogg" />
     <Media Include="..\Music\Panel Hunt Understated.ogg" />
     <Media Include="..\Music\Panel Hunt Understated Final.ogg" />
     <Media Include="..\Music\Panel Progression 1.ogg" />
@@ -292,6 +292,9 @@
     <Media Include="..\Music\Randomized.ogg" />
     <Media Include="..\Music\Victory Understated.ogg" />
     <Media Include="..\Music\Victory.ogg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\Graphics\thewitness_archipelago_icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

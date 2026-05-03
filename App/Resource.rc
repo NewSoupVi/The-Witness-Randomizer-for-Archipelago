@@ -236,6 +236,16 @@ IDR_WAVE92              WAVE                    "..\\Music\\Panel Hunt Final.ogg
 
 IDR_WAVE93              WAVE                    "..\\Music\\Panel Hunt Understated Final.ogg"
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "E:\\Dokumente\\The-Witness-Randomizer-for-Archipelago\\Graphics\\thewitness_archipelago_icon.ico"
+
 #endif    // Deutsch (Deutschland) resources
 /////////////////////////////////////////////////////////////////////////////
 
