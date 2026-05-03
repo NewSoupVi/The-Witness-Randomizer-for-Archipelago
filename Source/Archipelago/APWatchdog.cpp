@@ -35,13 +35,12 @@ APWatchdog::APWatchdog(APClient* client, PanelLocker* panelLocker, APState* stat
 	
 	generator = std::make_shared<Generate>();
 	ap = client;
-	panelIdToLocationId = apSettings->panelIdToLocationId;
 
 	this->apSettings = apSettings;
 	this->fixedClientSettings = fixedClientSettings;
 
-	for (auto [key, value] : panelIdToLocationId) {
-		panelIdToLocationId_READ_ONLY[key] = value;
+	for (auto [key, value] : apSettings->panelIdToLocationId) {
+		remainingPanelIdToLocationId[key] = value;
 		locationIdToPanelId_READ_ONLY[value] = key;
 	}
 
@@ -56,7 +55,7 @@ APWatchdog::APWatchdog(APClient* client, PanelLocker* panelLocker, APState* stat
 	}
 
 	bool anyEggCheckIsOn = false;
-	for (auto [entityID, locationID] : panelIdToLocationId) {
+	for (auto [entityID, locationID] : remainingPanelIdToLocationId) {
 		if (entityID >= 0xEE200 && entityID < 0xEE300) {
 			anyEggCheckIsOn = true;
 			int associatedEggCount = entityID - 0xEE200 + 1;
@@ -95,7 +94,7 @@ APWatchdog::APWatchdog(APClient* client, PanelLocker* panelLocker, APState* stat
 		}
 	}
 
-	for (auto [sideHex, epSet] : obeliskHexToEPHexes) {
+	for (auto [sideHex, epSet] : apSettings->obeliskHexToEPHexes) {
 		for (int epHex : epSet) {
 			epToObeliskSides[epHex] = sideHex;
 		}
@@ -137,18 +136,16 @@ APWatchdog::APWatchdog(APClient* client, PanelLocker* panelLocker, APState* stat
 		if (ClientWindow::get()->getJinglesSettingSafe() != "Off") APAudioPlayer::get()->PlayAudio(APJingle::Bonk, APJingleBehavior::PlayImmediate);
 	}
 
-	for (auto [key, value] : obeliskHexToEPHexes) {
+	for (auto [key, value] : apSettings->obeliskHexToEPHexes) {
 		obeliskHexToAmountOfEPs[key] = (int)value.size();
 	}
-
-	PuzzleRandomization = apSettings->PuzzleRandomization;
 
 	panelsThatHaveToBeSkippedForEPPurposes = {
 		0x09E86, 0x09ED8, // light controllers 2 3
 		0x033EA, 0x01BE9, 0x01CD3, 0x01D3F, // Pressure Plates
 	};
 
-	if (PuzzleRandomization == SIGMA_EXPERT) {
+	if (apSettings->PuzzleRandomization == SIGMA_EXPERT) {
 		panelsThatHaveToBeSkippedForEPPurposes.insert(0x181F5);
 		panelsThatHaveToBeSkippedForEPPurposes.insert(0x334D8);
 		panelsThatHaveToBeSkippedForEPPurposes.insert(0x03629); // Tutorial Gate Open
@@ -215,7 +212,7 @@ void APWatchdog::action() {
 		CheckSolvedPanels();
 		ClearEmptyEggAreasAndSendNotification();
 
-		if(PuzzleRandomization != NO_PUZZLE_RANDO) CheckEPSkips();
+		if(apSettings->PuzzleRandomization != NO_PUZZLE_RANDO) CheckEPSkips();
 
 		HandlePowerSurge();
 		DisableCollisions();
@@ -359,9 +356,9 @@ std::vector<int> APWatchdog::CheckCompletedHuntEntities() {
 
 void APWatchdog::CheckObeliskSides()
 {
-	for (auto& [obeliskID, EPSet] : obeliskHexToEPHexes) {
-		if (!panelIdToLocationId.contains(obeliskID)) continue;
-		int locationID = panelIdToLocationId[obeliskID];
+	for (auto& [obeliskID, EPSet] : apSettings->obeliskHexToEPHexes) {
+		if (!remainingPanelIdToLocationId.contains(obeliskID)) continue;
+		int locationID = remainingPanelIdToLocationId[obeliskID];
 
 		bool anyNew = false;
 
@@ -401,15 +398,15 @@ void APWatchdog::CheckObeliskSides()
 void APWatchdog::CheckSolvedPanels() {
 	std::vector<int> toRemove = {};
 	for (int id : recolorWhenSolved) {
-		if (!panelIdToLocationId_READ_ONLY.contains(id)) {
+		if (!apSettings->panelIdToLocationId.contains(id)) {
 			toRemove.push_back(id);
 			continue;
 		}
 		if (!IsPanelSolved(id, true)) continue;
 
 		if (FirstEverLocationCheckDone) {
-			PotentiallyColorPanel(panelIdToLocationId_READ_ONLY[id], true);
-			neverRecolorAgain.insert(panelIdToLocationId_READ_ONLY[id]);
+			PotentiallyColorPanel(apSettings->panelIdToLocationId[id], true);
+			neverRecolorAgain.insert(apSettings->panelIdToLocationId[id]);
 			HudManager::get()->queueNotification("This location was previously collected.", { 0.7f, 0.7f, 0.7f });
 		}
 		toRemove.push_back(id);
@@ -486,10 +483,10 @@ void APWatchdog::CheckSolvedPanels() {
 	bool finalEggCheck = false;
 
 	locationCheckInProgress = true;
-	for (auto [entityID, locationID] : panelIdToLocationId)
+	for (auto [entityID, locationID] : remainingPanelIdToLocationId)
 	{
-		if (obeliskHexToEPHexes.count(entityID)) {
-			std::set<int> EPSet = obeliskHexToEPHexes[entityID];
+		if (apSettings->obeliskHexToEPHexes.count(entityID)) {
+			std::set<int> EPSet = apSettings->obeliskHexToEPHexes[entityID];
 			if (EPSet.empty())
 			{
 				solvedEntityIDs.push_back(entityID);
@@ -519,8 +516,8 @@ void APWatchdog::CheckSolvedPanels() {
 
 	std::list<int64_t> solvedLocations = {};
 	for (int solvedEntityID : solvedEntityIDs) {
-		solvedLocations.push_back(panelIdToLocationId[solvedEntityID]);
-		panelIdToLocationId.erase(solvedEntityID);
+		solvedLocations.push_back(remainingPanelIdToLocationId[solvedEntityID]);
+		remainingPanelIdToLocationId.erase(solvedEntityID);
 	}
 
 	if (!solvedLocations.empty()) {
@@ -579,7 +576,7 @@ void APWatchdog::SkipPanel(int id, std::string reason, bool kickOut, int cost, b
 					int panel = *it;
 
 					if (panel == id) continue; // Let's not make infinite recursion by accident
-					if (panelIdToLocationId_READ_ONLY.count(panel)) break;
+					if (apSettings->panelIdToLocationId.count(panel)) break;
 					// TODO: Add panel hunt panels to this later?
 
 					if (ReadPanelData<int>(panel, SOLVED)) continue;
@@ -697,8 +694,8 @@ void APWatchdog::MarkLocationChecked(int64_t locationId)
 				while (locationCheckInProgress) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(10)));
 				}
-				if (panelIdToLocationId.count(panelId)) {
-					panelIdToLocationId.erase(panelId);
+				if (remainingPanelIdToLocationId.count(panelId)) {
+					remainingPanelIdToLocationId.erase(panelId);
 				}
 				return;
 			}
@@ -715,7 +712,7 @@ void APWatchdog::MarkLocationChecked(int64_t locationId)
 
 		Memory::get()->SolveEP(eID);
 		panelLocker->PermanentlyUnlockPuzzle(eID, *state);
-		if (precompletableEpToName.count(eID) && precompletableEpToPatternPointBytes.count(eID) && EPShuffle) {
+		if (precompletableEpToName.count(eID) && precompletableEpToPatternPointBytes.count(eID) && apSettings->EPShuffle) {
 			Memory::get()->MakeEPGlow(precompletableEpToName.at(eID), precompletableEpToPatternPointBytes.at(eID));
 		}
 	}
@@ -723,15 +720,15 @@ void APWatchdog::MarkLocationChecked(int64_t locationId)
 	while (locationCheckInProgress) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(10)));
 	}
-	if (panelIdToLocationId.count(panelId)) {
-		panelIdToLocationId.erase(panelId);
+	if (remainingPanelIdToLocationId.count(panelId)) {
+		remainingPanelIdToLocationId.erase(panelId);
 	}
 
-	if (obeliskHexToEPHexes.count(panelId) && CollectSkipBehavior != "Unchanged") {
-		for (int epHex : obeliskHexToEPHexes[panelId]) {
+	if (apSettings->obeliskHexToEPHexes.count(panelId) && CollectSkipBehavior != "Unchanged") {
+		for (int epHex : apSettings->obeliskHexToEPHexes[panelId]) {
 			if (!ReadPanelData<int>(epHex, EP_SOLVED)) {
 				Memory::get()->SolveEP(epHex);
-				if (precompletableEpToName.count(epHex) && precompletableEpToPatternPointBytes.count(epHex) && EPShuffle) {
+				if (precompletableEpToName.count(epHex) && precompletableEpToPatternPointBytes.count(epHex) && apSettings->EPShuffle) {
 					Memory::get()->MakeEPGlow(precompletableEpToName.at(epHex), precompletableEpToPatternPointBytes.at(epHex));
 				}
 			}
@@ -1105,11 +1102,11 @@ bool APWatchdog::PuzzleIsSkippable(int puzzleId) const {
 		// Puzzle is always excluded.
 		return false;
 	}
-	else if (PuzzleRandomization == SIGMA_EXPERT && skip_excludeOnHard.count(puzzleId) != 0) {
+	else if (apSettings->PuzzleRandomization == SIGMA_EXPERT && skip_excludeOnHard.count(puzzleId) != 0) {
 		// Puzzle is excluded on Hard.
 		return false;
 	}
-	else if ((PuzzleRandomization == SIGMA_NORMAL || PuzzleRandomization == NO_PUZZLE_RANDO || PuzzleRandomization == UMBRA_VARIETY) && skip_excludeOnNormal.count(puzzleId) != 0) {
+	else if ((apSettings->PuzzleRandomization == SIGMA_NORMAL || apSettings->PuzzleRandomization == NO_PUZZLE_RANDO || apSettings->PuzzleRandomization == UMBRA_VARIETY) && skip_excludeOnNormal.count(puzzleId) != 0) {
 		// Puzzle is excluded on Normal.
 		return false;
 	}
@@ -1747,7 +1744,7 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 		candidate = laserID;
 	}
 
-	if (candidate != -1 && ReadPanelData<int>(candidate, LASER_TARGET) == 0 && inGameHints.count(candidate)) {
+	if (candidate != -1 && ReadPanelData<int>(candidate, LASER_TARGET) == 0 && apSettings->inGameHints.count(candidate)) {
 		if (candidate != 0x012FB) {
 			if (laserCollisions[candidate]->containsPoint(headPosition)) {
 				currentLaser = candidate;
@@ -1775,11 +1772,11 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 	}
 
 	for (int laserID : allLasers) {
-		if (inGameHints.count(laserID)) {
+		if (apSettings->inGameHints.count(laserID)) {
 			bool laserHasBeenSeen = ReadPanelData<float>(laserID, 0x108) > 1;
 			
 			if (laserHasBeenSeen) {
-				seenMessages.insert(inGameHints[laserID]);
+				seenMessages.insert(apSettings->inGameHints[laserID]);
 			}
 		}
 	}
@@ -1790,7 +1787,7 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 		bool logPlaying = ReadPanelData<int>(logId, AUDIO_LOG_IS_PLAYING) != 0;
 
 		if (audioLogHasBeenPlayed || logPlaying) {
-			seenMessages.insert(inGameHints[logId]);
+			seenMessages.insert(apSettings->inGameHints[logId]);
 		}
 		if (logPlaying) {
 			currentAudioLog = logId;
@@ -1850,7 +1847,7 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 		}
 		else
 		{
-			std::string message = inGameHints[currentHintEntity].message;
+			std::string message = apSettings->inGameHints[currentHintEntity].message;
 			HudManager::get()->showInformationalMessage(InfoMessageCategory::ApHint, message);
 		}
 
@@ -1938,8 +1935,8 @@ void APWatchdog::HandleInGameHints(float deltaSeconds) {
 			std::set<int64_t> associatedChecks = {};
 
 			for (int64_t entityID : areaNameToEntityIDs[audioLogHint.areaHint]) {
-				if (panelIdToLocationId_READ_ONLY.contains(entityID)) {
-					int64_t locationID = panelIdToLocationId_READ_ONLY[entityID];
+				if (apSettings->panelIdToLocationId.contains(entityID)) {
+					int64_t locationID = apSettings->panelIdToLocationId[entityID];
 					if (locationIdToItemFlags.count(locationID)) {
 						associatedChecks.insert(locationID);
 
@@ -2036,10 +2033,10 @@ void APWatchdog::CheckAudioLogHints() {
 		bool audioLogHasBeenPlayed = ReadPanelData<int>(audioLog, AUDIO_LOG_PLAYED);
 		bool logPlaying = ReadPanelData<int>(audioLog, AUDIO_LOG_IS_PLAYING) != 0;
 		if (audioLogHasBeenPlayed || logPlaying) {
-			if (inGameHints.contains(audioLog)) {
-				int64_t locationId = inGameHints[audioLog].locationID;
-				if (locationId != -1 && inGameHints[audioLog].allowScout && !apSettings->VagueHintsLegacy) {
-					int target_player = inGameHints[audioLog].playerNo;
+			if (apSettings->inGameHints.contains(audioLog)) {
+				int64_t locationId = apSettings->inGameHints[audioLog].locationID;
+				if (locationId != -1 && apSettings->inGameHints[audioLog].allowScout && !apSettings->VagueHintsLegacy) {
+					int target_player = apSettings->inGameHints[audioLog].playerNo;
 					if (target_player == pNO) {
 						if (!checkedLocations.count(locationId)) {
 							if (ap->get_server_version() < APClient::Version(0, 6, 3))
@@ -2093,10 +2090,10 @@ void APWatchdog::CheckLaserHints() {
 
 		bool laserHasBeenSeen = ReadPanelData<float>(laserID, 0x108) > 1;
 		if (laserHasBeenSeen) {
-			if (inGameHints.contains(laserID)) {
-				int64_t locationId = inGameHints[laserID].locationID;
-				if (locationId != -1 && inGameHints[laserID].allowScout && !apSettings->VagueHintsLegacy) {
-					int target_player = inGameHints[laserID].playerNo;
+			if (apSettings->inGameHints.contains(laserID)) {
+				int64_t locationId = apSettings->inGameHints[laserID].locationID;
+				if (locationId != -1 && apSettings->inGameHints[laserID].allowScout && !apSettings->VagueHintsLegacy) {
+					int target_player = apSettings->inGameHints[laserID].playerNo;
 					if (target_player == pNO) {
 						if (!checkedLocations.count(locationId)) {
 							if (ap->get_server_version() < APClient::Version(0, 6, 3))
@@ -2583,7 +2580,7 @@ void APWatchdog::HandleEPResponse(std::string epID, nlohmann::json value) {
 		if (!epActiveInGame && (SyncProgress))
 		{
 			Memory::get()->SolveEP(entityID);
-			if (precompletableEpToName.count(entityID) && precompletableEpToPatternPointBytes.count(entityID) && EPShuffle) {
+			if (precompletableEpToName.count(entityID) && precompletableEpToPatternPointBytes.count(entityID) && apSettings->EPShuffle) {
 				Memory::get()->MakeEPGlow(precompletableEpToName.at(entityID), precompletableEpToPatternPointBytes.at(entityID));
 			}
 			newlySolvedEPs.push_back(entityID);
@@ -2815,7 +2812,7 @@ void APWatchdog::CheckImportantCollisionCubes() {
 }
 
 bool APWatchdog::CheckPanelHasBeenSolved(int panelId) {
-	return !panelIdToLocationId.count(panelId);
+	return !remainingPanelIdToLocationId.count(panelId);
 }
 
 void APWatchdog::SetItemRewardColor(const int& id, const int& itemFlags) {
@@ -3065,7 +3062,7 @@ void APWatchdog::PlayEntityHuntJingle(const int& huntEntity) {
 
 	if (ClientWindow::get()->getJinglesSettingSafe() == "Off") return;
 
-	if (panelIdToLocationId_READ_ONLY.count(huntEntity) && !CheckPanelHasBeenSolved(huntEntity)) return;
+	if (apSettings->panelIdToLocationId.count(huntEntity) && !CheckPanelHasBeenSolved(huntEntity)) return;
 
 	std::pair<int, int> solved_and_total = { state->solvedHuntEntities, state->requiredHuntEntities };
 	if (ClientWindow::get()->getJinglesSettingSafe() != "Full") {
@@ -3077,7 +3074,7 @@ void APWatchdog::PlayEntityHuntJingle(const int& huntEntity) {
 }
 
 void APWatchdog::CheckEPSkips() {
-	if (!EPShuffle) return;
+	if (!apSettings->EPShuffle) return;
 
 	std::set<int> panelsToSkip = {};
 	std::set<int> panelsToRemoveSilently = {};
@@ -3313,7 +3310,7 @@ void APWatchdog::SetStatusMessages() {
 
 			if (apSettings->DeathLinkAmnesty != -1) {
 				if (activePanelId != -1 && allPanels.count(activePanelId)) {
-					if (deathlinkExcludeList.count(activePanelId) || PuzzleRandomization == SIGMA_EXPERT && deathlinkExpertExcludeList.count(activePanelId) || PuzzleRandomization == UMBRA_VARIETY && deathlinkVarietyExcludeList.count(activePanelId)) {
+					if (deathlinkExcludeList.count(activePanelId) || apSettings->PuzzleRandomization == SIGMA_EXPERT && deathlinkExpertExcludeList.count(activePanelId) || apSettings->PuzzleRandomization == UMBRA_VARIETY && deathlinkVarietyExcludeList.count(activePanelId)) {
 						skipMessage = "This panel is excluded from DeathLink.\n" + skipMessage;
 					}
 					else {
@@ -3885,7 +3882,7 @@ void APWatchdog::CheckDeathLink() {
 
 	if (panelIdToConsider == -1 || !allPanels.count(panelIdToConsider)) return;
 	if (deathlinkExcludeList.count(panelIdToConsider)) return;
-	if (PuzzleRandomization == SIGMA_EXPERT && deathlinkExpertExcludeList.count(panelIdToConsider) || PuzzleRandomization == UMBRA_VARIETY && deathlinkVarietyExcludeList.count(panelIdToConsider)) return;
+	if (apSettings->PuzzleRandomization == SIGMA_EXPERT && deathlinkExpertExcludeList.count(panelIdToConsider) || apSettings->PuzzleRandomization == UMBRA_VARIETY && deathlinkVarietyExcludeList.count(panelIdToConsider)) return;
 
 	int newState = ReadPanelData<int>(panelIdToConsider, FLASH_MODE, 1, movingMemoryPanels.count(panelIdToConsider))[0];
 
@@ -4430,7 +4427,7 @@ void APWatchdog::DrawSpheres(float deltaSeconds) {
 }
 
 void APWatchdog::FlickerCable() {
-	if (PuzzleRandomization != SIGMA_EXPERT) return;
+	if (apSettings->PuzzleRandomization != SIGMA_EXPERT) return;
 	if (tutorialCableStateChangedRecently > 0) {
 		tutorialCableStateChangedRecently -= 1;
 		return;

@@ -118,7 +118,7 @@
       <TreatWarningAsError>false</TreatWarningAsError>
       <EnablePREfast>true</EnablePREfast>
       <AdditionalIncludeDirectories>Archipelago\Client\asio\include;Archipelago\Client\websocketpp;Archipelago\Client\wswrap\include;Archipelago\Client\json\include;Archipelago\Client\valijson\include;Archipelago\Client\openssl\include;Archipelago\Client\zlib\include;soloud20200207\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/Zc:__cplusplus /bigobj /Zc:char8_t- %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Zc:__cplusplus /bigobj /Zc:char8_t- /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
@@ -162,7 +162,7 @@
       <TreatWarningAsError>false</TreatWarningAsError>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>Archipelago\Client\asio\include;Archipelago\Client\websocketpp;Archipelago\Client\wswrap\include;Archipelago\Client\json\include;Archipelago\Client\valijson\include;..\Source\Archipelago\Client\openssl\include;Archipelago\Client\zlib\include;soloud20200207\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/Zc:__cplusplus /Zc:char8_t- %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Zc:__cplusplus /Zc:char8_t- /utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

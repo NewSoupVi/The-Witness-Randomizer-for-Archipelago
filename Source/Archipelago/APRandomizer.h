@@ -103,8 +103,8 @@ class APRandomizer {
 
 		void setPuzzleLocks();
 
-		ApSettings GetAPSettings();
-		FixedClientSettings GetFixedClientSettings();
+		ApSettings* GetAPSettings();
+		FixedClientSettings* GetFixedClientSettings();
 
 		std::string buildUri(std::string& server);
 

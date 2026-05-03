@@ -142,7 +142,7 @@ private:
 	APClient* ap;
 	PanelLocker* panelLocker;
 	std::shared_ptr<Generate> generator;
-	std::map<int, int> panelIdToLocationId;
+	std::map<int, int> remainingPanelIdToLocationId;
 	std::map<int, int> panelIdToLocationId_READ_ONLY;
 	std::map<int, int> locationIdToPanelId_READ_ONLY;
 	std::map<int64_t, unsigned int> locationIdToItemFlags;
@@ -170,8 +170,6 @@ private:
 
 	int DeathLinkCount = 0;
 
-	bool EPShuffle = false;
-	int PuzzleRandomization = 0;
 
 	std::string CollectSkipBehavior = "Unchanged";
 	bool CollectUnlock = false;
@@ -383,8 +381,6 @@ private:
 	//   skipped for whatever reason.
 	int puzzleSkipCost = -1;
 
-	std::map<int, inGameHint> inGameHints = {};
-	std::map<int, std::set<int>> obeliskHexToEPHexes = {};
 	std::map<int, int> epToObeliskSides = {};
 	std::map<int, int> obeliskHexToAmountOfEPs = {};
 

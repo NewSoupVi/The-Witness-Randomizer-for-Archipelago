@@ -8,7 +8,7 @@ const std::string& GetCreditsHint() {
   return creditsHint;
 }
 
-const std::vector<std::string>& GetJokeHints(ApSettings* apSettings) {
+const std::vector<std::string>& GetJokeHints(const ApSettings& apSettings) {
   static std::vector<std::string> jokeHints = {
     "Have you tried Adventure?\n...Holy crud, that game is 17 years older than me.",
     u8"Have you tried Aquaria?\nAdmittedly, singing is a much cooler interaction mechanic than \"drawing lines on stuff\"™.",
@@ -287,13 +287,13 @@ const std::vector<std::string>& GetJokeHints(ApSettings* apSettings) {
     ">>>^<<^<^>^>v>v>^^",
     "on the island. straight up \"witnessing it\". and by \"it\", haha, well. lets justr say.\nmy panels",
     "Confuse the randomizer developers with this one easy trick: Numpad notation.",
-    u8"who up standing on they precipice about to enter a room 👍👀💥💯",
+    "who up standing on they precipice about to enter a room",
     "Every time you ask a game-specific question in the general channel,\nwe add one symbol to Desert Vault.",
 
     "Hints suggested by:\nIHNN, Beaker, MrPokemon11, Ember, TheM8, NewSoupVi, Jasper Bird, T1mshady, KF, Yoshi348, Berserker, BowlinJim, oddGarrett, Pink Switch, Rever, Ishigh, snolid, CodeGorilla, Quas NaArt, Scipio, Projectyl, ManyPinkHats, m4elstrom, Kinrah, Pineapple, TG, transmothgirl, Aplle, Orsan, bucketofnoodles, Gamefalor.",
   };
 
-  if (apSettings->EggHuntDifficulty) {
+  if (apSettings.EggHuntDifficulty) {
     static std::vector<std::string> eggJokeHints = {
       "There is an Easter egg way, way above you.\nWait, no, sorry, that's just the sun again.",
       "There was an Easter egg here, but I think it must have rolled off or something.",

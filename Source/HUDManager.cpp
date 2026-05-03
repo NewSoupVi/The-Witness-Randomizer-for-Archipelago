@@ -1208,9 +1208,20 @@ void HudManager::writePayload(const HudTextPayload& payload, uint64_t writeAddre
 			uint32_t arbgShadowColor = line.shadowColor.argb();
 			memory->WriteAbsolute((LPVOID)(writeAddress + HudTextLine::address_shadowColor), &arbgShadowColor, sizeof(uint32_t));
 
+			// Copy UTF-8 bytes safely into the fixed-size buffer.
 			char stringBuff[STRING_DATA_SIZE];
-			strncpy_s(stringBuff, line.text.c_str(), STRING_DATA_SIZE);
-			stringBuff[STRING_DATA_SIZE - 1] = 0;
+			// copyLen = number of bytes to copy (leave room for terminating NUL)
+			size_t copyLen = std::min<size_t>(STRING_DATA_SIZE - 1, line.text.size());
+			if (copyLen > 0) {
+				// copy raw bytes (works whether the bytes came from u8 literal or normal literal)
+				std::copy_n(line.text.data(), copyLen, stringBuff);
+			}
+			// ensure termination and zero the rest
+			stringBuff[copyLen] = '\0';
+			if (copyLen + 1 < STRING_DATA_SIZE) {
+				std::fill(stringBuff + copyLen + 1, stringBuff + STRING_DATA_SIZE, 0);
+			}
+
 			memory->WriteAbsolute((LPVOID)(writeAddress + HudTextLine::address_string), stringBuff, sizeof(stringBuff));
 
 			// Advance write pointer past the line information.
