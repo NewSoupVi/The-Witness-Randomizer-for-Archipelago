@@ -188,12 +188,25 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 
 		clientWindow->logLine("Connect: Getting panelhex to id.");
-		for (auto& [key, val] : slotData["panelhex_to_id"].items()) {
-			int panelId = std::stoul(key, nullptr, 16);
-			int locationId = val;
+		if (slotData.contains("panelhex_to_id")) {
+			for (auto& [key, val] : slotData["panelhex_to_id"].items()) {
+				int panelId = std::stoul(key, nullptr, 16);
+				int locationId = val;
 
-			panelIdToLocationId.insert({ panelId, locationId });
-			panelIdToLocationIdReverse.insert({ locationId, panelId });
+				panelIdToLocationId.insert({ panelId, locationId });
+				panelIdToLocationIdReverse.insert({ locationId, panelId });
+			}
+		}
+		else {
+			clientWindow->logLine("Connect: New seed! Building dummy panelhex to id instead.");
+			for (int64_t locationId : ap->get_checked_locations()) {
+				panelIdToLocationId.insert({ locationId, locationId });
+				panelIdToLocationIdReverse.insert({ locationId, locationId });
+			}
+			for (int64_t locationId : ap->get_missing_locations()) {
+				panelIdToLocationId.insert({ locationId, locationId });
+				panelIdToLocationIdReverse.insert({ locationId, locationId });
+			}
 		}
 
 		clientWindow->logLine("Connect: Getting Precompleted Puzzles.");
@@ -221,13 +234,18 @@ bool APRandomizer::Connect(std::string& server, std::string& user, std::string& 
 		}
 
 		clientWindow->logLine("Connect: Getting item id to door hexes.");
+		nlohmann::json item_id_to_door_ids = {};
 		if (slotData.contains("item_id_to_door_hexes")) {
-			for (auto& [key, val] : slotData["item_id_to_door_hexes"].items()) {
-				int itemId = std::stoul(key, nullptr, 10);
-				std::set<int> v = val;
+			item_id_to_door_ids = slotData["item_id_to_door_hexes"];
+		}
+		if (slotData.contains("item_id_to_door_ids")) {
+			item_id_to_door_ids = slotData["item_id_to_door_ids"];
+		}
+		for (auto& [key, val] : item_id_to_door_ids.items()) {
+			int itemId = std::stoul(key, nullptr, 10);
+			std::set<int> v = val;
 
-				itemIdToDoorSet.insert({ itemId, v });
-			}
+			itemIdToDoorSet.insert({ itemId, v });
 		}
 
 		clientWindow->logLine("Connect: Getting Obelisk Side to EPs.");
