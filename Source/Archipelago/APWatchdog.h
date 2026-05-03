@@ -59,6 +59,8 @@ public:
 	int foundPuzzleSkips = 0;
 
 	APState* state;
+	ApSettings* apSettings;
+	FixedClientSettings* fixedClientSettings;
 
 	virtual void action();
 
@@ -149,7 +151,6 @@ private:
 	std::set<int> neverRecolorAgain;
 	std::set<int> alreadyPlayedHuntEntityJingle;
 	std::set<std::pair<int, int64_t>> locationsThatContainedItemsFromOtherPlayers;
-	int finalPanel;
 	bool isCompleted = false;
 	bool eee = false;
 	bool desertLaserHasBeenUpWhileConnected = false;
@@ -167,23 +168,13 @@ private:
 
 	int mostRecentItemId = -1;
 
-	std::map<int, std::set<int>> itemIdToDoorSet;
-	std::map<int, std::vector<int>> progressiveItems;
-
-	int DeathLinkAmnesty = 0;
 	int DeathLinkCount = 0;
 
-	std::set<std::string> ElevatorsComeToYou = {};
 	bool EPShuffle = false;
 	int PuzzleRandomization = 0;
 
-	std::string Collect = "Unchanged";
-	std::string CollectText = "Unchanged";
+	std::string CollectSkipBehavior = "Unchanged";
 	bool CollectUnlock = false;
-	std::string DisabledPuzzlesBehavior = "Prevent Solve";
-	std::string DisabledEPsBehavior = "Prevent Solve";
-	std::set<int> DisabledEntities;
-	bool SyncProgress = false;
 
 	std::map<int, bool> huntEntityToSolveStatus;
 	std::map<std::string, std::set<int>> huntEntitiesPerArea;
@@ -195,16 +186,10 @@ private:
 	std::map<std::string, std::set<int>> unsolvedEasterEggsPerArea;
 	std::map<int, std::string> easterEggToAreaName;
 	bool firstEggShouldSendMessage = true;
-	int EggHuntStep = 0;
-	int EggHuntDifficulty = 0;
 	int HighestRealEggCheck = 0; // Not excluded
 	int HighestEggCheck = 0;
 
-	bool AllHintsAreVagueHintsLegacy = false;
-
 	int doneKhatzEffects = 0;
-
-	std::map<int, int> doorToItemId;
 
 	bool FirstEverLocationCheckDone = false;
 	bool locationCheckInProgress = false;
@@ -233,7 +218,6 @@ private:
 	float speedTime = 0.0f;
 	float bonkTime = 0.0f;
 	int amountOfBonksInCurrentBonk = 0;
-	float solveModeSpeedFactor = 0.0f;
 
 	bool infiniteChallenge = false;
 	bool infiniteChallengeIsValid = false;

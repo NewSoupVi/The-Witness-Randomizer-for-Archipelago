@@ -1,4 +1,5 @@
 #include "Hints.h"
+#include "APWatchdog.h"
 
 const std::string& GetCreditsHint() {
   static const std::string creditsHint = "This Randomizer is brought to you by\n"
@@ -7,8 +8,8 @@ const std::string& GetCreditsHint() {
   return creditsHint;
 }
 
-const std::vector<std::string>& GetJokeHints() {
-  static const std::vector<std::string> jokeHints = {
+const std::vector<std::string>& GetJokeHints(ApSettings* apSettings) {
+  static std::vector<std::string> jokeHints = {
     "Have you tried Adventure?\n...Holy crud, that game is 17 years older than me.",
     u8"Have you tried Aquaria?\nAdmittedly, singing is a much cooler interaction mechanic than \"drawing lines on stuff\"™.",
     "Have you tried A Hat in Time?\nThere's an actual metro in that game, not just one on the tracker.",
@@ -19,8 +20,10 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Bumper Stickers?\nDecades after its inception, people are still inventing unique twists on the match-3 genre.",
     "Have you tried Bumper Stickers?\nMaybe after spending so much time on this island, you are longing for a simpler puzzle game.",
     "Have you tried Castlevania: Circle of the Moon?\nHas anyone tried telling Konami that the moon isn't a circle most of the time?",
+    "Have you tried Castlevania: Circle of the Moon?\nIt's that one Castlevania game where they made the moon the wrong shape.",
     "Have you tried Celeste 64?\nYou need smol low-poly Madeline in your life. TRUST ME.",
     "Have you tried ChecksFinder?\nIf you like puzzles, you might enjoy it!",
+    "Have you tried Choo-Choo Charles? I'd tell you what it's about, but I've lost my train of thought...",
     "Have you tried Clique?\nIt's certainly a lot less complicated than this game!",
     "Have you tried Castlevania 64?\nMaybe you can get Malus to play \"In the Hall of the Mountain King\".",
     "Have you tried Civilization VI?\nSomeone should recommend this game to Vi.\nIt even has their name in it!",
@@ -56,6 +59,7 @@ const std::vector<std::string>& GetJokeHints() {
     "Have you tried Ocarina of Time?\nOne of the most popular randomizers, and a big inspiration for this one's features!",
     "Have you tried Old School Runescape?\nIt's the first AP game to be considered async-nonviable!",
     "Have you tried Overcooked 2?\nWhen you're done relaxing with puzzles, use your energy to yell at your friends.",
+    "Have you tried Paint? It's a game that has a 69.0% similarity to a program that probably came with your operating system.",
     "Have you tried Pokemon Emerald?\nI'm going to say it: 10/10, just the right amount of water.",
     "Have you tried Pokemon Red&Blue?\nA cute pet collecting game that fascinated an entire generation.",
     "Have you tried Raft?\nHaven't you always wanted to explore the ocean surrounding this island?",
@@ -269,8 +273,38 @@ const std::vector<std::string>& GetJokeHints() {
     "It's amazing how much more readable the Archipelago server becomes after you've blocked every single moderator...",
     "Archipelago should stop doing releases on April 1st.\nIt gives April Fools' Day a bad name.",
 
-    "Hints suggested by:\nIHNN, Beaker, MrPokemon11, Ember, TheM8, NewSoupVi, Jasper Bird, T1mshady, KF, Yoshi348, Berserker, BowlinJim, oddGarrett, Pink Switch, Rever, Ishigh, snolid, CodeGorilla, Quas NaArt, Scipio, Projectyl, ManyPinkHats, m4elstrom, Kinrah, Pineapple, TG, transmothgirl, Aplle, Orsan, Noodles.",
+    "The Princess can be found at a Koopa Hotel location in Bowser's world. And you gotta help us!",
+    "It's time to take a break and get some water!",
+    "Challenge doesn't exist, it can't hurt you.",
+    "Puzzle Skip for sale\nNever used, non - smoking home\n555 - 7678",
+    "Coming soon!\nWitness 2: Now I've Seen Everything",
+    "This randomizer was brought to you by the letter \"W\".",
+    "Additional hints available for $3.99 per hint. Buy 4, get the 5th free!",
+    "Archipelago should stop doing releases on April 1st.\nIt gives April Fools' Day a bad name.",
+    "You could stop at five or six audio logs, or just one!",
+    "Maybe, uh... maybe you can't do it. Maybe you're weak. Maybe you're stupid. You should be embarrassed, but you keep crawling back, like a mewling kitten at my chafing teat. Pathetic.",
+    "Think of what's awaiting you a couple drawings down the line:\nA bunch of emptiness at the success you didn't find.",
+    ">>>^<<^<^>^>v>v>^^",
+    "on the island. straight up \"witnessing it\". and by \"it\", haha, well. lets justr say.\nmy panels",
+    "Confuse the randomizer developers with this one easy trick: Numpad notation.",
+    u8"who up standing on they precipice about to enter a room 👍👀💥💯",
+    "Every time you ask a game-specific question in the general channel,\nwe add one symbol to Desert Vault.",
+
+    "Hints suggested by:\nIHNN, Beaker, MrPokemon11, Ember, TheM8, NewSoupVi, Jasper Bird, T1mshady, KF, Yoshi348, Berserker, BowlinJim, oddGarrett, Pink Switch, Rever, Ishigh, snolid, CodeGorilla, Quas NaArt, Scipio, Projectyl, ManyPinkHats, m4elstrom, Kinrah, Pineapple, TG, transmothgirl, Aplle, Orsan, bucketofnoodles, Gamefalor.",
   };
+
+  if (apSettings->EggHuntDifficulty) {
+    static std::vector<std::string> eggJokeHints = {
+      "There is an Easter egg way, way above you.\nWait, no, sorry, that's just the sun again.",
+      "There was an Easter egg here, but I think it must have rolled off or something.",
+      "There is an Eater egg nearby.\nWatch out, it'll eat you!",
+      "The nearest Easter egg is a bit further away.\nNo, the other wa - No, you had it right the first ti - Wait, no, sorry, you already found that one.",
+      "Inside you there are two Easter eggs fighting.",
+      "What? No, this isn't an Easter egg. It's a dictaphone. They're different.",
+    };
+
+    jokeHints.insert(jokeHints.end(), eggJokeHints.begin(), eggJokeHints.end());
+  }
 
   return jokeHints;
 }
