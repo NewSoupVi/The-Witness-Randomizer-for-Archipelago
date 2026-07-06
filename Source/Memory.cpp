@@ -1800,7 +1800,16 @@ void Memory::CallVoidFunction(int id, uint64_t functionAdress) {
 	WriteProcessMemory(_handle, allocation_start, buffer, allocation_size, NULL);
 	HANDLE thread = CreateRemoteThread(_handle, NULL, 0, (LPTHREAD_START_ROUTINE)allocation_start, NULL, 0, 0);
 
-	WaitForSingleObject(thread, INFINITE);
+	DWORD waitResult = WaitForSingleObject(thread, 10000);
+	if (waitResult == WAIT_TIMEOUT) {
+		ThrowError("Timeout when making a function call into the game. Is an antivirus stopping it?");
+	}
+	if (waitResult == WAIT_ABANDONED) {
+		ThrowError("Abandoned wait when making a function call into the game. Is an antivirus stopping it?");
+	}
+	if (waitResult == WAIT_FAILED) {
+		ThrowError("Failed when making a function call into the game.");
+	}
 }
 
 void Memory::EnableMovement(bool enable) {

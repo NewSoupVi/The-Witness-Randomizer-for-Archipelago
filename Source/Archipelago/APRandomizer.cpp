@@ -908,9 +908,14 @@ void APRandomizer::setPuzzleLocks() {
 }
 
 void APRandomizer::InitPanels() {
+	ClientWindow* clientWindow = ClientWindow::get();
 	Memory* memory = Memory::get();
 
-	for (int panel : LockablePuzzles) {
+	for (int i = 0; i < LockablePuzzles.size(); i++) {
+		clientWindow->logLine("Initializing Panels (" + std::to_string(i) + "/" + std::to_string(LockablePuzzles.size()) + ")");
+
+		int panel = LockablePuzzles[i];
+
 		if (allPanels.count(panel)) {
 			memory->InitPanel(panel);
 		}
